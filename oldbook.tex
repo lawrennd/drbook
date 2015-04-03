@@ -1,0 +1,3455 @@
+%% LyX 1.5.6 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[oneside,british,english,a5paper,times]{dimredbook}
+\usepackage[latin9]{inputenc}
+\usepackage{subfigure}
+\usepackage{url}
+\usepackage{amsmath}
+\usepackage{color}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage[authoryear]{natbib}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+%% A simple dot to overcome graphicx limitations
+\newcommand{\lyxdot}{.}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+
+%\usepackage{multimedia}
+\usepackage{listings}
+\usepackage{ae,aecompl}
+\usepackage{xmpmulti}
+\usepackage{bm}
+\definecolor{brown}{rgb}{0.9,0.59,0.078}
+\definecolor{ironsulf}{rgb}{0,0.7,.5}
+\definecolor{lightpurple}{rgb}{0.156,0,0.245}
+%\usepackage{hyperref}
+%\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black,pdfstartview=FitH,bookmarksopen=true,bookmarksopenlevel=0plainpages=false,pdfpagelabels,pagebackref=false,pdftoolbar=false]{hyperref}
+
+\makeatother
+
+\usepackage{babel}
+
+\begin{document}
+\selectlanguage{english}
+
+\title{Dimensionality Reduction for Machine Learning}
+
+
+\author{}
+
+\maketitle
+\textbf{All source code and slides are available online}
+
+\begin{itemize}
+\item Tutorial homepage is 
+
+\begin{itemize}
+\item \url{http://www.cs.man.ac.uk/~neill/icml_tutorial.html}.
+\item MATLAB/Octave commands used for examples given in \texttt{typewriter
+font}.
+\end{itemize}
+\end{itemize}
+
+\chapter{Thinking in High Dimensions}
+
+\newcommand{\dataStd}{\sigma}
+
+
+\newcommand{\dataMatrix}{\mathbf{Y}}
+\newcommand{\dataVector}{\mathbf{y}}
+\newcommand{\dataScalar}{y}
+
+
+\newcommand{\switchMatrix}{\mathbf{S}}
+\newcommand{\switchVector}{\mathbf{s}}
+\newcommand{\switchScalar}{s}
+
+
+\newcommand{\latentMatrix}{\mathbf{X}}
+\newcommand{\latentVector}{\mathbf{x}}
+\newcommand{\latentScalar}{x}
+
+
+\newcommand{\fantasyMatrix}{\mathbf{Z}}
+\newcommand{\fantasyVector}{\mathbf{z}}
+\newcommand{\fantasyScalar}{z}
+
+
+\newcommand{\kernelMatrix}{\mathbf{K}}
+\newcommand{\kernelVector}{\mathbf{k}}
+\newcommand{\kernelScalar}{k}
+
+
+\newcommand{\covarianceMatrix}{\mathbf{C}}
+\newcommand{\covarianceVector}{\mathbf{c}}
+\newcommand{\covarianceScalar}{c}
+
+
+\newcommand{\eigenvectorMatrix}{\mathbf{U}}
+\newcommand{\eigenvector}{\mathbf{u}}
+\newcommand{\eigenvectorScalar}{u}
+
+
+\newcommand{\eigenvalueMatrix}{\boldsymbol{\Lambda}}
+\newcommand{\eigenvalueVector}{\boldsymbol{\lambda}}
+\newcommand{\eigenvalue}{\lambda}
+
+
+\newcommand{\mappingMatrix}{\mathbf{W}}
+\newcommand{\mappingVector}{\mathbf{w}}
+\newcommand{\mappingScalar}{w}
+\newcommand{\paramVector}{\boldsymbol{\theta}}
+
+
+\newcommand{\latentDistanceMatrix}{\boldsymbol{\Delta}}
+\newcommand{\latentDistanceVector}{\boldsymbol{\delta}}
+\newcommand{\latentDistanceScalar}{\delta}
+
+
+\newcommand{\distanceMatrix}{\mathbf{D}}
+\newcommand{\distanceVector}{\mathbf{d}}
+\newcommand{\distanceScalar}{d}
+
+
+\newcommand{\centeringMatrix}{\mathbf{H}}
+
+
+\newcommand{\eye}{\mathbf{I}}
+
+
+\newcommand{\onesVector}{\mathbf{1}}
+
+
+\newcommand{\zerosVector}{\mathbf{0}}
+
+
+\newcommand{\numData}{N}
+
+
+\newcommand{\numComponents}{M}
+
+
+\newcommand{\numHidden}{H}
+
+
+\newcommand{\rbfWidth}{l}
+
+
+\newcommand{\dataDim}{D}
+
+
+\newcommand{\latentDim}{q}
+
+
+\newcommand{\sampleCovMatrix}{\mathbf{S}}
+\newcommand{\sampleCovVector}{\mathbf{s}}
+\newcommand{\sampleCovScalar}{\mathbf{s}}
+
+
+\newcommand{\rotationMatrix}{\mathbf{R}}
+\newcommand{\rotationVector}{\mathbf{r}}
+
+
+\newcommand{\gaussianSamp}[2]{\mathcal{N}\left(#1,#2\right)}
+\newcommand{\gaussianDist}[3]{\mathcal{N}\left(#1|#2,#3\right)}
+
+
+\newcommand{\gammaSamp}[2]{\mathcal{G}\left(#1,#2\right)}
+\newcommand{\gammaDist}[3]{\mathcal{G}\left(#1|#2,#3\right)}
+
+
+\newcommand{\expSamp}[1]{\mathcal{E}\left(#1\right)}
+\newcommand{\expDist}[2]{\mathcal{E}\left(#1|#2\right)}
+
+
+\newcommand{\chiSquaredSamp}[1]{\chi_{#1}^{2}}
+\newcommand{\chiSquaredDist}[2]{\chi_{#1}^{2}\left(#2\right)}
+
+
+\newcommand{\variance}[1]{\mathrm{var}\left( #1 \right)}
+\newcommand{\varianceDist}[2]{\mathrm{var}_{#2}\left( #1 \right)}
+
+
+\newcommand{\expectation}[1]{\left\langle #1 \right\rangle }
+\newcommand{\expectationDist}[2]{\left\langle #1 \right\rangle _{#2}}
+
+
+If data is at the heart of machine learning, then perhaps the models
+we use are then the lungs. Matching the right model to the data is
+a crucial first step in approaching a learning task. In this book
+we are interested in \emph{dimensionality reduction}\@. This is the
+process of taking data with a lot of features, or dimensions, and
+summarizing it with a lower dimensional representation. In the first
+part of the book we will try and motivate why this might be a sensible
+approach to dealing with data. Our starting point will be to develop
+our understanding of \emph{why }high dimensional data is special.
+It is only by understanding its characteristics that we can then really
+think about how to model it. In the succesful application of machine
+learning the data and the model should work in partnership.
+
+Machine learning is already a very technical subject, and is perhaps
+becoming more so. However, in this book we will try and rely more
+on intuitions, with technical material for back up. Reliance on intuition
+can be a dangerous thing. We are often fooled by our particular perspective
+on a problem. There are many excellent works on why and when our intuitions
+fail. However, that doesn't mean we should reject them. Rather, our
+approach will be to try and understand when and how they are wrong. 
+
+A common approach to getting an intuition across is to use a {}``toy''
+data set to illustrate how an algorithm works. By focusing on toy
+data we can get a much better idea of a particular facet of a learning
+problem. Such toy data sets can be useful, giving intuitions about
+the learning scenario that generalize well to real world problems.
+However, such toy examples can also mislead. They can present an overly
+simple perspective on a particular learning problem. One of the approaches
+to understanding dimensionality reduction we will use in this book
+is to explore these toy problems and to use them to think about when,
+how and if they fail. Through better understanding of the data we
+hope to develop better models and ultimately improved performance
+of our learning algorithms.
+
+
+\section{\index{clustering}Clustering}
+
+A recurring plot that is shown in talks on machine learning, particularly
+those on clustering, is a configuration of data points in two dimensions
+such as those shown in Figure\ \ref{fig:clusteredTwoDimensionalData}(a).
+At first glance, the data appears quite realistic. The density of
+the data points varies considerably as we move around the plot. The
+data seems to be clustered, but not in a uniform manner: some clusters
+are tighter than others. The clusters also seem to be somewhat randomly
+distributed around the plot. At some point during the talk, a slide
+containing a fit to the data, such as that in Figure\ \ref{fig:clusteredTwoDimensionalData}(b)
+is shown. This figure shows the means and variances of a mixture of
+multivariate (two dimensional) Gaussian distributions \textbackslash{}cite\{mclachlan\}.
+The fit seems to be a good approximation to the data. 
+
+Models of this type can also be justified by appeals to our intuition.
+The way I like to think of these mixture models is as a summary of
+the data by a series of prototypes (represented by the means of the
+Gaussian components of the mixture distribution). These prototypes
+are subject to distortions. Each component represents the range of
+distortions that the data can undergo. In the case of the mixture
+of Gaussians, the distortions are of the form of adding zero mean,
+Gaussian distributed, random noise with a particular covariance matrix.
+From the perspective of the \index{theory of error}\emph{theory of
+error }
+
+%
+\begin{minipage}[t][1\totalheight]{1\columnwidth}%
+The Gaussian Distribution 
+
+The Gaussian distribution, or strictly speaking, the multi-variate
+Gaussian distribution will dominate our discussions in this book.
+It was first described by \index{Laplace, Pierre Simon}\citet{Laplace:memoire74}
+who used it to approximate the posterior distribution in a Bayesian
+analysis of biased coins%
+\footnote{Ironically, we would today consider this system tractable --- it was
+a beta-binomial system for which the posterior is a beta distribution.%
+}. \citeauthor{Laplace:memoire74} considered a Taylor expansion about
+the mode of the log posterior up to second order terms. In the multivariate
+case that leads to a distribution of the form
+
+\[
+\gaussianDist{\mathbf{y}}{\boldsymbol{\mu}}{\boldsymbol{\Sigma}}=\frac{1}{\left(2\pi\right)^{\frac{\dataDim}{2}}\left|\Sigma\right|^{\frac{1}{2}}}=\exp\left(-\frac{1}{2}\left(\dataVector-\boldsymbol{\mu}\right)^{\top}\boldsymbol{\Sigma}^{-1}\left(\dataVector-\boldsymbol{\mu}\right)\right),\]
+where we refer to $\boldsymbol{\mu}$ as the mean and $\boldsymbol{\Sigma}$
+as the covariance matrix. Here, the distribution is over $\dataVector$
+which is a $D$ dimensional vector, $\dataVector\in\mathbb{R}^{\dataDim\times1}$
+. The mean is the first moment of the distribution, \[
+\boldsymbol{\mu}=\expectationDist{\dataVector}{\gaussianDist{\dataVector}{\boldsymbol{\mu}}{\boldsymbol{\Sigma}}}=\int\dataVector\gaussianDist{\dataVector}{\boldsymbol{\mu}}{\boldsymbol{\Sigma}}\mathrm{d}\dataVector,\]
+whilst the covariance gives the expected \emph{squared deviation}
+about the mean,\[
+\boldsymbol{\Sigma}=\expectationDist{\left(\dataVector-\boldsymbol{\mu}\right)\left(\dataVector-\boldsymbol{\mu}\right)^{\top}}{\gaussianDist{\dataVector}{\boldsymbol{\mu}}{\boldsymbol{\Sigma}}}=\int\left(\dataVector-\boldsymbol{\mu}\right)\left(\dataVector-\boldsymbol{\mu}\right)^{\top}\gaussianDist{\dataVector}{\boldsymbol{\mu}}{\boldsymbol{\Sigma}}\mathrm{d}\dataVector.\]
+The \index{covariance matrix}covariance matrix is constrained to
+be positive definite. 
+
+The Gaussian distribution has some interesting properties, the sum
+of two Gaussian variables is also Gaussian \textbackslash{}cite\{\}.
+And, under certain conditions, the sum of very many non-Gaussian variables
+tends to be Gaussian. This fact is known as the central limit theorem.
+Whilst it was empirically known as far back as \index{Gauss, Carl Friedrich}\citet{Gauss:theoria09},
+who used it to form the foundations of the \index{theory of error}theory
+of error and justify \emph{\index{least squares}least squares estimation},
+the theorem was only proved for interesting general cases by \textbackslash{}cite\{\}
+and its application continued to be extended \textbackslash{}cite\{\}.
+
+The Gaussian distribution has other important properties that we will
+introduce as they become ncessary.
+
+Floating box describing some properties of the Gaussian distribution.%
+\end{minipage}
+
+Such a model seems intuitively appealing. When the expectation maximization
+approach to optimizing such powerful models was first described in
+\textbf{\emph{reference here }}the statistics community must have
+been very excited and, indeed, there are many applications for which
+a mixture of Gaussians is an appropriate model \textbf{\emph{need
+a reference here?}}. Such applications are not the focus of \emph{this}
+book. We are more interested in what is wrong with this approach to
+modelling. There are two foundation assumptions which underpin the
+mixture of Gaussians approach to modelling data. We described them
+both in the appeal to intuition. The first assumption is that the
+data is generated through prototypes ...HERE!! The first is one is
+the assumptikeystone assumptions 
+
+Such applications are . There are random Gaussian noise with a particular
+covariance to form new and the prototythe Gaussian distributionsThe
+underlying model of the system is as follows: there are several prototype
+(or archetype) data positions in the data, What is really being Further
+motivation for such a model can be given by Such models seem to be
+extremely powerful, and indeed they are. However, they are also misleading.
+They are misleading in several ways. The data is clustered, and we
+have assumed little or no structure in the clustering. This book is
+principally about one way in which they are misleading: an aspect
+of the models that is difficult to describe on a slide projector.
+In particular we are concerned with whether or not this picture is
+misleading for data sets of high dimensionality. By higher dimensionality
+we can think of dimensionality that is difficult to visualize directly,
+\emph{i.e.}\ dimensionality greater than $\dataDim=3$. 
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demArtificialMog2NoOvals}\hfill{}\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demArtificialMog2}
+\par\end{centering}
+
+\caption{A two dimensional data set and the fit of a mixture of Gaussians to
+the data. A mixture of Gaussians appears to be a very powerful model
+as it seems to fit a data set with a fairly complex structure.\label{fig:clusteredTwoDimensionalData} }
+
+\end{figure}
+
+
+
+\subsection{Dimensionality Greater than Three}
+
+In higher dimensions \emph{models} that seem reasonable in two or
+three dimensions can fail dramatically. Note the emphasis on model.
+Note that, in this section, we are not making any statements about
+how a `realistic' data set behaves in higher dimensions. In fact,
+we will argue in Section~ that for many data sets data doesn't Primarily
+We will return to 
+
+\begin{itemize}
+\item matically.
+\item Two major issues:
+
+\begin{enumerate}
+\item In high dimensions all the data moves to a `shell'. There is nothing
+near the mean!
+\item Distances between points become constant (this applies for many distributions).
+\end{enumerate}
+\item Let's consider a Gaussian {}``egg''.
+\end{itemize}
+The Gaussian Egg
+
+See also Exercise 1.4 in \citep{Bishop:book95}
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /diagrams/oneDgaussian}}
+\par\end{centering}
+
+\begin{centering}
+\textbf{Volumes:} \colorbox{lightpurple}{ \textcolor{yellow}{65.8\%},
+\color{ironsulf}4.84\% \textcolor{white}{24.82\%} \color{brown}4.24\%
+}\\
+\subfigure[]{\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /diagrams/twoDgaussian}}
+\par\end{centering}
+
+\begin{centering}
+\textbf{Volumes: }\colorbox{lightpurple}{\textcolor{yellow}{59.4\%},
+\color{ironsulf}7.35\% \textcolor{white}{31.37\%} \color{brown}1.82\%}
+\par\end{centering}
+
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /diagrams/threeDgaussian}}
+\par\end{centering}
+
+\begin{centering}
+\textbf{Volumes: }\colorbox{lightpurple}{ \textcolor{yellow}{56.1\%},
+\color{ironsulf}9.24\%, \textcolor{white}{33.92\%} \color{brown}0.74\%}
+\par\end{centering}
+
+\caption{(a) One dimensional Gaussian distribution. (b) Two dimensional Gaussian
+distribution. (c) Three dimensional Gaussian distribution. }
+
+\end{figure}
+
+
+\textbf{What is the distribution of mass? }
+
+\[
+y_{i,k}\sim\gaussianSamp{0}{\dataStd^{2}}\]
+
+
+Square of sample from Gaussian is scaled chi-squared distribution.
+\[
+\dataScalar_{i,k}^{2}\sim\dataStd^{2}\chi_{1}^{2}\]
+Chi squared distribution is a variant of the gamma distribution with
+shape parameter $a=\frac{1}{2}$, rate parameter $b=\frac{1}{2\dataStd^{2}}$,
+$\gammaDist{x}{a}{b}=\frac{b^{a}}{\Gamma\left(a\right)}x^{a-1}e^{-bx}$. 
+
+\textbf{\emph{}}%
+\begin{minipage}[t][1\totalheight]{1\columnwidth}%
+The Gamma Distribution
+
+The Gamma distribution is a density over positive numbers. It has
+the form\[
+\gammaDist{x}{a}{b}=\frac{b^{a}}{\Gamma\left(a\right)}x^{a-1}e^{-bx}\]
+where $a$ is known as the shape parameter and $b$ is known as a
+rate parameter. The function $\Gamma\left(a\right)$ is known as the
+gamma function and is defined through the following indefinite integral,\[
+\Gamma\left(a\right)=\int_{0}^{\infty}x^{a-1}e^{-x}\mathrm{d}x\]
+ The mean of the gamma distribution is given by\[
+\expectationDist{x}{\gammaDist{x}{a}{b}}=\frac{a}{b}\]
+and the variance is given by\[
+\varianceDist{x}{\gammaDist{x}{a}{b}}=\frac{a}{b^{2}}.\]
+Sometimes the distribution is defined in terms of a scale parameter,
+$\beta=b^{-1}$, instead of a rate. Confusingly, this parameter is
+also often denoted by {}``$b$''. For example, the statistics toolbox
+in MATLAB defines things this way. The gamma distribution generalizes
+several important special cases of distributions including the exponential
+distribution with rate $b$, $\expDist{x}{b}$, which is the specific
+case where the shape parameter is taken to be $a=1$. The chi-squared
+distribution with one degree of freedom, denoted $\chiSquaredDist{1}{x}$
+mentioned in Box~ is the special case where the shape parameter is
+taken to be $a=\frac{1}{2}$ and the rate parameter is $b=\frac{1}{2}$.
+
+The gamma distribution is the conjugate distribution for the precision
+of a Gaussian distribution. See Box~ for more on conjugacy in Bayesian
+inference.%
+\end{minipage}
+
+\[
+\dataScalar_{i,k}^{2}\sim\gammaSamp{\frac{1}{2}}{\frac{1}{2\dataStd^{2}}}\]
+Addition of gamma random variables with the same rate is gamma with
+sum of shape parameters ($y_{i,k}$s are independent)\[
+{\color{red}\dataScalar_{i,1}^{2}+\dataScalar_{i,2}^{2}}\sim\gammaSamp{\frac{2}{2}}{\frac{1}{2\dataStd^{2}}}\]
+\[
+\sum_{k=1}^{\dataDim}y_{i,k}^{2}\sim\gammaSamp{\frac{\dataDim}{2}}{\frac{1}{2\dataStd^{2}}}\]
+\[
+\expectation{\sum_{k=1}^{\dataDim}y_{i,k}^{2}}=D\dataStd^{2}\]
+\[
+\frac{1}{D}\sum_{k=1}^{\dataDim}y_{i,k}^{2}\sim\gammaSamp{\frac{\dataDim}{2}}{\frac{D}{2\dataStd^{2}}}\]
+\[
+\expectation{\frac{1}{\dataDim}\sum_{k=1}^{\dataDim}y_{i,k}^{2}}=\dataStd^{2}\]
+
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=3cm]{/home/neil/mlprojects/dimred/tex/diagrams/distance2}
+\par\end{centering}
+
+\caption{Distance from mean of the distribution (blue circle) to a given data
+point (red square).}
+
+\end{figure}
+
+
+\begin{itemize}
+\item Squared distances from mean are gamma distributed.
+\item Can use gamma density's cumulative distribution to work out where
+the mass is.
+\end{itemize}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/dimensionMass}
+\par\end{centering}
+
+\caption{Plot of probability mass versus dimension. Plot shows the volume of
+distribution inside 0.95 of a standard deviation (yellow), between
+0.95 and 1.05 standard deviations (green), between 1.05 and 2 standard
+deviations (white) and between 2 and 3 standard deviations (brown). }
+
+\end{figure}
+
+
+
+\subsection{Looking at Gaussian Samples}
+
+%
+\begin{figure}
+
+
+\begin{centering}
+\includegraphics[width=0.8\textwidth]{/home/neil/mlprojects/dimred/tex/diagrams/twoDGaussianSamples}
+\par\end{centering}
+
+\caption{How to look at a projected Gaussian.}
+
+\end{figure}
+
+
+Interpoint Distances
+
+\begin{itemize}
+\item The other effect in high dimensions is all points become equidistant.
+\item Can show this for Gaussians with a similar proof to the above,\[
+\dataScalar_{i,k}\sim\gaussianSamp{0}{\sigma_{k}^{2}}\,\,\,\,\,\,\,\dataScalar_{j,k}\sim\gaussianSamp{0}{\sigma_{k}^{2}}\]
+\[
+y_{i,k}-y_{j,k}\sim\gaussianSamp{0}{2\sigma_{k}^{2}}\]
+\[
+\left(y_{i,k}-y_{j,k}\right)^{2}\sim\gammaSamp{\frac{1}{2}}{\frac{1}{4\sigma_{k}^{2}}}\]
+For spherical Gaussian, $\sigma_{k}^{2}=\sigma^{2}$ \[
+\sum_{k=1}^{\dataDim}\left(y_{i,k}-y_{j,k}\right)^{2}\sim\gammaSamp{\frac{\dataDim}{2}}{\frac{1}{4\dataStd^{2}}}\]
+\[
+\frac{1}{\dataDim}\sum_{k=1}^{\dataDim}\left(y_{i,k}-y_{j,k}\right)^{2}\sim\gammaSamp{\frac{\dataDim}{2}}{\frac{D}{4\dataStd^{2}}}\]
+ Dimension normalized distance between points is Gamma distributed.
+Mean is $2\sigma^{2}$. Variance is $\frac{8\sigma^{2}}{D}$.
+\end{itemize}
+Central Limit Theorem and Non-Gaussian Case
+
+\begin{itemize}
+\item We could compute these distribution of squared distance \emph{analytically
+}for spherical, independent Gaussian data.
+\item More generally, for \emph{independent} data, the \textbf{central limit
+theorem} applies.
+
+\begin{itemize}
+\item The mean squared distance in high dimensional space is the mean of
+the variances.
+\item The variance about the mean scales as $\dataDim^{-1}$.
+\end{itemize}
+\end{itemize}
+
+\subsection{Summary}
+
+We have seen in this chapter that a model which assumes that a high
+dimensional data set is made up by independently sampling each feature
+behaves rather counter intuitively. All the data falls exactly one
+standard deviation away from the mean. If we think of a mixture model
+representation of the data, where we justify the mixture representation
+by the assumption that our data is made up of prototypes (the mixture
+centres) which are corrupted in some way, we find that our prototypes
+have vanishingly small probability as dimensions increase. 
+
+For the Gaussian case the data are distributed uniformly across the
+hypersphere. If we were able to sit at the center of the distribution
+looking out, the view of the data would be like looking at the night
+sky, although all the stars would be one standard deviation away.
+For the supper Gaussian case the data would be clustered along the
+axes. For the sub Gaussian case the data would be clustered at points
+rotated $45^{\circ}$ away from the axes.
+
+In the next chapter we will have a look at whether this is an accurate
+model of the way real data sets are. We will use real data to inspire
+an alternative approach to modeling, one based on dimensionality reduction.
+
+
+\chapter{The Curse of Dimensionality?\label{sec:realWorldData}}
+
+\textbf{\emph{Add in material about consistency of models which consider
+features to be independent ... in this case dimensionality is a blessing
+... in the context of maximum likelihood it allows parameters to be
+well determined. This can be a way of introducing GPLVM and spectral
+methods. Question: for GPLVM the number of parameters is known, but
+for spectral methods, how many parameters are we using, if , for example
+we do LLE? k{*}N. This is odd, because as data we only have d{*}N
+data points and sometimes k\textgreater{}d. }}
+
+When I first started working in machine learning, the `curse of dimensionality'
+was often raised. The theoretical problems of high dimensional spaces
+were well understood. When their implications are considered in the
+context of a given algorithm, it is often clear that the algorithm's
+behavior will deteriorate. For example, many algorithms are based
+on measuring the distance between points and assuming that points
+which are close together behave in a similar way. If all data points
+were approximately equidistant we would be unable to differentiate
+between different data points through this mechanism. In this chapter,
+we will explore the question of whether or not this is an accurate
+representation for real high dimensional data sets. We will start,
+though, by considering an artificial data set, one actually sampled
+independently across its features from Gaussian distributions.
+
+
+\section{Gaussian Samples in High Dimensions}
+
+\textbf{Distance distribution for a Gaussian with $\dataDim=1000$,
+$\numData=1000$}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.6\textwidth]{\lyxdot \lyxdot /diagrams/gaussianDistances1000}
+\par\end{centering}
+
+\caption{A good match betwen theory and the samples for a 1000 dimensional
+Gaussian distribution.}
+
+\end{figure}
+
+
+Sanity Check
+
+\textbf{Same data generation, but fewer data points.}
+
+\begin{itemize}
+\item If dimensions are independent, we expect low variance, Gaussian behaviour
+for the distribution of squared distances.
+\end{itemize}
+\textbf{Distance distribution for a Gaussian with $\dataDim=1000$}\textbf{\emph{,
+$\numData=100$}}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.6\textwidth]{\lyxdot \lyxdot /diagrams/gaussianDistances100}
+\par\end{centering}
+
+\caption{A good match betwen theory and the samples for a 1000 dimensional
+Gaussian distribution.}
+
+\end{figure}
+
+
+
+\section{Oil Data}
+
+\begin{itemize}
+\item Simulated measurements from an oil pipeline \citep{Bishop:oil93}.
+
+\begin{itemize}
+\item Pipleline contains oil, water and gas.
+\item Three phases of flow in pipeline --- homogeneous, stratified and annular.
+\item Gamma densitometry sensors arranged in a configuration around pipeline.
+\end{itemize}
+\end{itemize}
+\begin{center}
+%
+\begin{figure}
+
+
+%
+\begin{minipage}[b][0.8\textheight][t]{0.5\columnwidth}%
+%
+\begin{minipage}[t][0.3\textheight]{1\columnwidth}%
+\begin{center}
+Homogeneous
+\par\end{center}%
+\end{minipage}\\
+%
+\begin{minipage}[t][0.3\textheight]{1\columnwidth}%
+\begin{center}
+Stratified
+\par\end{center}%
+\end{minipage}\\
+%
+\begin{minipage}[t][0.3\textheight]{1\columnwidth}%
+\begin{center}
+Annular
+\par\end{center}%
+\end{minipage}%
+\end{minipage}\includegraphics[height=0.8\textheight]{\lyxdot \lyxdot /diagrams/oilData}\includegraphics[height=0.8\textheight]{\lyxdot \lyxdot /diagrams/oilDataSensors}\caption{The {}``oil data''. The data set is artificially generated by modeling
+the manner in which a gamma ray's intensity falls when it passes through
+a different density materials. }
+
+\end{figure}
+
+\par\end{center}
+
+\begin{itemize}
+\item 12 simulated measurements of oil flow in a pipe.
+\item Nature of flow is dependent on relative proportion of oil, water and
+gas.
+\end{itemize}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.6\textwidth]{\lyxdot \lyxdot /diagrams/oilDistances}
+\par\end{centering}
+
+\caption{Interpoint squared distance distribution for oil data with $D=12$.
+(variance of squared distances is 1.98 vs predicted 0.67)}
+
+\end{figure}
+
+
+
+\section{Stick Man Data}
+
+Stick Man Data
+
+\begin{itemize}
+\item $\numData=55$ frames of motion capture.
+
+\begin{itemize}
+\item $xyz$ locations of 34 points on the body.
+\item $\dataDim=102$ dimensional data.
+\item {}``Run 1'' available from \url{http://accad.osu.edu/research/mocap/mocap_data.htm}.
+\end{itemize}
+\end{itemize}
+%
+\begin{figure}
+
+
+%
+\begin{minipage}[b][0.8\textheight][t]{0.5\columnwidth}%
+%
+\begin{minipage}[c][0.3\textheight]{1\columnwidth}%
+\begin{center}
+Changing
+\par\end{center}%
+\end{minipage}\\
+%
+\begin{minipage}[c][0.3\textheight]{1\columnwidth}%
+\begin{center}
+Angle
+\par\end{center}%
+\end{minipage}\\
+%
+\begin{minipage}[c][0.3\textheight]{1\columnwidth}%
+\begin{center}
+of Run
+\par\end{center}%
+\end{minipage}%
+\end{minipage}%
+\begin{minipage}[b][0.8\textheight][t]{0.5\columnwidth}%
+%
+\begin{minipage}[t][0.3\textheight]{1\columnwidth}%
+\begin{center}
+\includegraphics[height=0.2\textheight]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3Angle1}
+\par\end{center}%
+\end{minipage}\\
+%
+\begin{minipage}[t][0.3\textheight]{1\columnwidth}%
+\begin{center}
+\includegraphics[height=0.2\textheight]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3Angle2}
+\par\end{center}%
+\end{minipage}\\
+%
+\begin{minipage}[t][0.3\textheight]{1\columnwidth}%
+\begin{center}
+\includegraphics[height=0.2\textheight]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3Angle3}
+\par\end{center}%
+\end{minipage}%
+\end{minipage}\caption{The {}``stick man'' data set. }
+
+
+
+\end{figure}
+
+
+\begin{itemize}
+\item Motion capture data inter point distance histogram.
+\end{itemize}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.6\textwidth]{\lyxdot \lyxdot /diagrams/stickDistances}
+\par\end{centering}
+
+\caption{Interpoint squared distance distribution for stick man data with $\dataDim=102$
+(variance of squared distances is 1.09 vs predicted 0.078).}
+
+\end{figure}
+
+
+
+\section{Yeast Cell Cycle Data}
+
+\begin{itemize}
+\item Gene expression measurements reflecting the cell cycle in yeast \citep{Spellman:yeastcellcy98}. 
+
+\begin{itemize}
+\item $\dataDim=24,401$ Genes measured at $\numData=24$ time points
+\item Data available from \url{http://genome-www.stanford.edu/cellcycle/data/rawdata/individual.htm}.
+\end{itemize}
+\end{itemize}
+%
+\begin{figure}
+\begin{centering}
+%
+\begin{minipage}[b][0.8\textheight][t]{0.5\columnwidth}%
+%
+\begin{minipage}[c][0.3\textheight]{1\columnwidth}%
+\begin{center}
+Yeast
+\par\end{center}%
+\end{minipage}\\
+%
+\begin{minipage}[c][0.3\textheight]{1\columnwidth}%
+\begin{center}
+Cell
+\par\end{center}%
+\end{minipage}\\
+%
+\begin{minipage}[c][0.3\textheight]{1\columnwidth}%
+\begin{center}
+Cycle
+\par\end{center}%
+\end{minipage}%
+\end{minipage}\includegraphics[height=0.8\textheight]{\lyxdot \lyxdot /diagrams/spellman}
+\par\end{centering}
+
+\caption{The {}``Spellman'' data.}
+
+
+
+\end{figure}
+
+
+\begin{itemize}
+\item Spellman yeast cell cycle.
+\end{itemize}
+\begin{center}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.6\textwidth]{\lyxdot \lyxdot /diagrams/spellmanDistances}
+\par\end{centering}
+
+\caption{Interpoint squared distance distribution for Microarray data with
+$D=24,401$ (variance of squared distances is 0.6173 vs predicted
+3.3e-4).}
+
+\end{figure}
+
+\par\end{center}
+
+
+\section{Another Look at Gaussian Samples}
+
+Where does practice depart from our theory?
+
+\begin{itemize}
+\item The situation for real data does not reflect what we expect.
+\item Real data exhibits greater variances on interpoint distances.
+
+\begin{itemize}
+\item Somehow the real data seems to have a smaller effective dimension.
+\end{itemize}
+\item Let's look at another $\dataDim=1000$.
+\end{itemize}
+1000-D Gaussian
+
+\textbf{Distance distribution for a different Gaussian with $\dataDim=1000$}
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.6\textwidth]{\lyxdot \lyxdot /diagrams/correlatedGaussianDistances}}\\
+
+\par\end{centering}
+
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.6\textwidth]{\lyxdot \lyxdot /diagrams/correlatedGaussianDistances2}}
+\par\end{centering}
+
+\caption{Interpoint squared distance distribution for Gaussian with $D=1000$.
+Gaussian has a specific low rank covariance matrix $\mathbf{C}=\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\mathbf{I}$.
+Data generated by taking $\sigma^{2}=1e-2$ and sample $\mathbf{W}\in\Re^{1000\times2}$
+elements independently from $\gaussianSamp{0}{1}$.}
+
+\end{figure}
+
+
+
+\chapter{Linear Probabilistic Dimensionality Reduction}
+
+\textbf{Where does this Low Rank Covariance Matrix Come From?}
+
+\begin{itemize}
+\item Factor Analysis leads to $\mathbf{C}=\mappingMatrix\mappingMatrix^{\mathrm{T}}+\mathbf{D}$,
+$\mathbf{D}=\mathrm{diag}\left(\mathbf{d}\right)$ --- not discussed
+further.
+\item Probabilistic PCA \citep{Tipping:probpca99,Roweis:SPCA97}
+
+\begin{itemize}
+\item Linear Mapping from $\latentDim$-dimensional latent space to $\dataDim$-dimensional
+data space.
+\item Corrupt the mapping by independent Gaussian noise. 
+\item Marginalise latent variables using Gaussian prior.
+\end{itemize}
+\end{itemize}
+
+\section{Probabilistic PCA}
+
+Notation
+
+\begin{center}
+$\latentDim$--- dimension of latent/embedded space\\
+$\dataDim$--- dimension of data space\\
+$\numData$--- number of data points
+\par\end{center}
+
+\begin{center}
+\emph{centred} data, $\dataMatrix=\left[\dataVector_{1,:},\dots,\dataVector_{\numData,:}\right]^{\textrm{T}}=\left[\dataVector_{:,1},\dots,\dataVector_{:,\dataDim}\right]\in\Re^{\numData\times\dataDim}$\\
+latent variables, $\latentMatrix=\left[\latentVector_{1,:},\dots,\latentVector_{\numData,:}\right]^{\textrm{T}}=\left[\latentVector_{:,1},\dots,\latentVector_{:,\latentDim}\right]\in\Re^{\numData\times\latentDim}$\\
+mapping matrix, $\mappingMatrix\in\Re^{\dataDim\times\latentDim}$
+\par\end{center}
+
+\begin{center}
+centering matrix, $\centeringMatrix=\eye-\numData^{-1}\onesVector\onesVector^{\mathrm{T}}\in\Re^{\numData\times\numData}$\foreignlanguage{british}{ }
+\par\end{center}
+
+Reading Notation
+
+\begin{itemize}
+\item $\mathbf{a}_{i,:}$ is a vector from the $i$th row of a given matrix
+$\mathbf{A}$.
+\item $\mathbf{a}_{:,j}$ is a vector from the $j$th row of a given matrix
+$\mathbf{A}$.
+\item $\latentMatrix$ and $\dataMatrix$ are \emph{design matrices.}
+\item Centred data matrix given by $\hat{\dataMatrix}=\centeringMatrix\dataMatrix$.
+\foreignlanguage{british}{\textbf{\emph{Box on centering matrices}}}
+\item Sample covariance given by $\sampleCovMatrix=\numData^{-1}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}$.
+
+
+\[
+\mathrm{cov}\left(\mathbf{Y}\right)=\frac{1}{\numData}\sum_{i=1}^{\numData}\hat{\dataVector}_{i,:}\hat{\dataVector}_{i,:}^{\mathrm{T}}=\numData^{-1}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\]
+
+
+\item Centred inner product matrix given by $\kernelMatrix=\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}$\[
+\kernelMatrix=\left(\kernelScalar_{i,j}\right)_{i,j},\,\,\,\,\,\,\,\,\,\kernelScalar_{i,j}=\hat{\dataVector}_{i,:}^{\mathrm{T}}\hat{\dataVector}{}_{j,:}\]
+
+\end{itemize}
+
+\section{Probabilistic Linear Dimensionality Reduction}
+
+Linear Dimensionality Reduction
+
+\begin{itemize}
+\item Two dimensional plane projected into a three dimensional space.
+\end{itemize}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/mapping2to3linear}
+\par\end{centering}
+
+\caption{Mapping a two dimensional plane to a higher dimensional space in a
+linear way.}
+
+\end{figure}
+
+
+\textbf{\newpage{}Linear Latent Variable Model}
+
+\begin{itemize}
+\item Represent data, $\dataMatrix$, with a lower dimensional set of latent
+variables $\latentMatrix$.
+\item Assume a linear relationship of the form\[
+\dataVector_{i,:}=\mappingMatrix\latentVector_{i,:}+\boldsymbol{\eta}_{i,:},\]
+where \[
+\boldsymbol{\eta}_{i,:}\sim\gaussianSamp{\zerosVector}{\dataStd^{2}\eye}.\]
+
+\end{itemize}
+Linear Latent Variable Model
+
+\textbf{Probabilistic PCA}
+
+\begin{itemize}
+\item Linear-Gaussian relationship between latent variables and data.
+
+\begin{itemize}
+\item $\latentMatrix$ are `nuisance' variables.
+\item Latent variable model approach:
+
+\begin{itemize}
+\item Define Gaussian prior over \emph{latent space}, $\latentMatrix$.
+\item Integrate out nuisance \emph{latent variables}.
+\end{itemize}
+\end{itemize}
+\begin{center}
+\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/ppcaGraph}
+\par\end{center}
+
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix,\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\mappingMatrix\latentVector_{i,:}}{\dataStd^{2}\eye}\]
+\[
+p\left(\latentMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\latentVector_{i,:}}{\zerosVector}{\eye}\]
+\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye}\]
+
+\par\end{center}
+
+\end{itemize}
+Probabilistic PCA Solution
+
+\textbf{Probabilistic PCA Max. Likelihood Soln \citep{Tipping:probpca99}}
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/ppcaGraph}\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye}\]
+\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\covarianceMatrix},\,\,\,\,\,\,\,\covarianceMatrix=\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\mappingMatrix\right)=-\frac{\numData}{2}\log\left|\covarianceMatrix\right|-\frac{1}{2}\mbox{tr}\left(\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\right)+\mbox{const.}\]
+If $\eigenvectorMatrix_{\latentDim}$ are first $\latentDim$ principal
+eigenvectors of $\numData^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\mappingMatrix=\mathbf{U}_{\latentDim}\mathbf{L}\rotationMatrix^{\mathrm{T}},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.
+\par\end{center}
+
+Why Probabilistic PCA?
+
+\begin{itemize}
+\item What is the point in probabilistic methods?
+\item Could we not just project with regular PCA?
+
+\begin{itemize}
+\item Integration within other models (\emph{e.g.}\ mixtures of PCA \citep{Tipping:pca97},
+temporal models).
+\item Model selection through Bayesian treatment of parameters \citep{Bishop:bayesPCA98}.
+\item Marginalisation of missing data \citep{Tipping:probpca99}.
+\end{itemize}
+\end{itemize}
+\begin{center}
+\textbf{Note: These same advantages hold for Factor Analysis}
+\par\end{center}
+
+Oil and Missing Data
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /diagrams/oilFullProject}}\hfill{}\subfigure[]{\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /diagrams/oilMissing90Project}}\subfigure[]{\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /diagrams/oilMissing80Project}}\hfill{}\subfigure[]{\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /diagrams/oilMissing70Project}}\subfigure[]{\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /diagrams/oilMissing50Project}}
+\par\end{centering}
+
+\caption{Projection of the oil data set on to $\latentDim=2$ latent dimensions.
+(a) full data set with no missing data and the projection of the data
+set with (b) 10\% (c) 20\% (d) 30\% (e) 50\% values missing at random.}
+
+\end{figure}
+
+
+Summary
+
+\begin{itemize}
+\item Distributions can behave very non-intuitively in high dimensions.
+\item Fortunately, most data is not really high dimensional.
+\item Probabilistic PCA exploits linear low dimensional structure in the
+data.
+
+\begin{itemize}
+\item Probabilistic interpretation brings with it many advantages: extensibility,
+Bayesian approaches, missing data.
+\end{itemize}
+\item We will now motivate the need for \emph{non linear} dimensionality
+reduction.
+\end{itemize}
+
+\chapter{Interpoint Distance Matching}
+
+
+\section{Classical MDS}
+
+Data Representation
+
+\begin{itemize}
+\item Classical statistical approach: represent via proximities. \citep{Mardia:book72}
+\item Proximity data: similarities or dissimilarities.
+\item Example of a dissimilarity matrix: a \emph{distance matrix}.\[
+\distanceScalar_{i,j}=\left\Vert \dataVector_{i,:}-\dataVector_{j,:}\right\Vert _{2}=\sqrt{\left(\dataVector_{i,:}-\dataVector_{j,:}\right)^{\mathrm{T}}\left(\dataVector_{i,:}-\dataVector_{j,:}\right)}\]
+
+\item For a data set can display as a matrix.
+\end{itemize}
+
+\subsection{Rotated Sixes}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistances4096}
+\par\end{centering}
+
+\caption{Interpoint distances for the rotated digits data.}
+
+\end{figure}
+
+
+\begin{itemize}
+\item Find a configuration of points, $\latentMatrix$, such that each \[
+\latentDistanceScalar_{i,j}=\left\Vert \latentVector_{i,:}-\latentVector_{j,:}\right\Vert _{2}\]
+closely matches the corresponding $d_{i,j}$ in the distance matrix.
+\item Need an objective function for matching $\latentDistanceMatrix=\left(\latentDistanceScalar_{i,j}\right)_{i,j}$
+to $\distanceMatrix=\left(d_{i,j}\right)_{i,j}$. 
+\end{itemize}
+
+\subsubsection{Feature Selection}
+
+\begin{itemize}
+\item An entrywise $L_{1}$ norm on difference between squared distances\[
+E\left(\latentMatrix\right)=\sum_{i=1}^{\numData}\sum_{j=1}^{\numData}\left|\distanceScalar_{ij}^{2}-\latentDistanceScalar_{ij}^{2}\right|.\]
+
+\item Reduce dimension by selecting features from data set.
+\item Select for $\latentMatrix$, in turn, the column from $\dataMatrix$
+that most reduces this error until we have the desired $\latentDim$.
+\item To minimise $E\left(\dataMatrix\right)$ we compose $\latentMatrix$
+by extracting the columns of $\dataMatrix$ which have the largest
+variance. \textbf{\emph{Box on which columns of Y to extract}}
+\end{itemize}
+
+\subsubsection{Reconstruction from Latent Space}
+
+%
+\begin{figure}
+\selectlanguage{british}%
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistances2}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistances10}}\\
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistances100}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistances1000}}
+\par\end{centering}
+
+\selectlanguage{english}%
+(a) distances reconstructed with two dimensions. (b) distances reconstructed
+with 10 dimensions. (c) distances reconstructed with 100 dimensions.
+(d) distances reconstructed with 1000 dimensions.
+\end{figure}
+
+
+
+\subsubsection{Feature Extraction}
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.65\textwidth]{\lyxdot \lyxdot /diagrams/demRotationDist1}}\\
+\subfigure[]{\includegraphics[width=0.65\textwidth]{\lyxdot \lyxdot /diagrams/demRotationDist2}}\\
+\subfigure[]{\includegraphics[width=0.65\textwidth]{\lyxdot \lyxdot /diagrams/demRotationDist3}}
+\par\end{centering}
+
+\caption{\texttt{demRotationDist}. Feature selection via distance preservation.}
+
+\end{figure}
+
+
+Feature Extraction
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.65\textwidth]{\lyxdot \lyxdot /diagrams/demRotationDist4_1}}\\
+\subfigure[]{\includegraphics[width=0.65\textwidth]{\lyxdot \lyxdot /diagrams/demRotationDist4_5}}\\
+\subfigure[]{\includegraphics[width=0.65\textwidth]{\lyxdot \lyxdot /diagrams/demRotationDist5}}\\
+\subfigure[]{\includegraphics[width=0.65\textwidth]{\lyxdot \lyxdot /diagrams/demRotationDist6}}
+\par\end{centering}
+
+\caption{\texttt{demRotationDist}. Rotation preserves interpoint distances.
+Residuals are much reduced.}
+
+\end{figure}
+
+
+
+\subsubsection{Which Rotation?}
+
+\begin{itemize}
+\item We need the rotation that will minimise residual error.
+\item We already an algorithm for discarding directions.
+\item Discard direction with \emph{maximum variance}. 
+\item Error is then given by the sum of residual variances.\[
+E\left(\latentMatrix\right)=2\numData^{2}\sum_{k=\latentDim+1}^{\dataDim}\sigma_{k}^{2}.\]
+
+\item Rotations of data matrix \emph{do not }effect this analysis.
+\end{itemize}
+
+\subsubsection{Rotation Reconstruction from Latent Space}
+
+%
+\begin{figure}
+\selectlanguage{british}%
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistancesRotate2}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistancesRotate10}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistancesRotate100}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixDistancesRotate360}}
+\par\end{centering}
+
+\selectlanguage{english}%
+(a) distances reconstructed with two dimensions. (b) distances reconstructed
+with 10 dimensions. (c) distances reconstructed with 100 dimensions.
+(d) distances reconstructed with 360 dimensions.
+\end{figure}
+
+
+
+\section{PCA and MDS}
+
+Reminder: Principal Component Analysis
+
+\begin{itemize}
+\item How do we find these directions?
+\item Find directions in data with maximal variance.
+
+\begin{itemize}
+\item That's what PCA does!
+\end{itemize}
+\item \textbf{PCA}: rotate data to extract these directions.
+\item \textbf{PCA}: work on the sample covariance matrix $\sampleCovMatrix=\numData^{-1}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}$.
+\end{itemize}
+Principal Component Analysis
+
+\begin{itemize}
+\item Find a direction in the data, $\latentVector_{:,1}=\hat{\dataMatrix}\rotationVector_{1}$,
+for which variance is maximised. \begin{eqnarray*}
+\rotationVector_{1} & = & \mathrm{argmax}_{\rotationVector_{1}}\variance{\hat{\dataMatrix}\mathbf{\rotationVector_{1}}}\\
+\mathrm{subject\, to:} &  & \rotationVector_{1}^{\mathrm{T}}\rotationVector_{1}=1\end{eqnarray*}
+
+\item Can rewrite in terms of sample covariance
+\item \[
+\variance{\latentVector_{:,1}}=\numData^{-1}\left(\hat{\dataMatrix}\rotationVector_{1}\right)^{\mathrm{T}}\hat{\dataMatrix}\rotationVector_{1}=\rotationVector_{1}^{\mathrm{T}}\underbrace{\left(N^{-1}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\right)}_{\mathrm{sample}\,\mathrm{covariance}}\rotationVector_{1}=\rotationVector_{1}^{\mathrm{T}}\sampleCovMatrix\rotationVector_{1}\]
+
+\end{itemize}
+Lagrangian
+
+\begin{itemize}
+\item Solution via constrained optimisation:\[
+L\left(\rotationVector_{1},\eigenvalue_{1}\right)=\rotationVector_{1}^{\mathrm{T}}\sampleCovMatrix\rotationVector_{1}+\eigenvalue_{1}\left(1-\rotationVector_{1}^{\mathrm{T}}\rotationVector_{1}\right)\]
+
+\item Gradient with respect to $\rotationVector_{1}$\[
+\frac{\mathrm{d}L\left(\rotationVector_{1},\eigenvalue_{1}\right)}{\mathrm{d}\rotationVector_{1}}=2\sampleCovMatrix\rotationVector_{1}-2\eigenvalue_{1}\rotationVector_{1}\]
+rearrange to form\[
+\sampleCovMatrix\rotationVector_{1}=\eigenvalue_{1}\rotationVector_{1}.\]
+Which is recognised as an eigenvalue problem.
+\end{itemize}
+Lagrange Multiplier
+
+\begin{itemize}
+\item Recall the gradient,\begin{equation}
+\frac{\mathrm{d}L\left(\rotationVector_{1},\eigenvalue_{1}\right)}{\mathrm{d}\rotationVector_{1}}=2\sampleCovMatrix\rotationVector_{1}-2\eigenvalue_{1}\rotationVector_{1}\label{eq:gradObjective}\end{equation}
+to find $\eigenvalue_{1}$ premultiply (\ref{eq:gradObjective}) by
+$\rotationVector_{1}^{\mathrm{T}}$ and rearrange giving \[
+\eigenvalue_{1}=\rotationVector_{1}^{\mathrm{T}}\sampleCovMatrix\rotationVector_{1}.\]
+
+\item Maximum variance is therefore \emph{necessarily }the maximum eigenvalue
+of $\sampleCovMatrix$. 
+\item This is the \emph{first principal component.}
+\end{itemize}
+Further Directions
+
+\begin{itemize}
+\item Find orthogonal directions to earlier extracted directions with maximal
+variance. 
+\item Orthogonality constraints, for $j<k$ we have \[
+\rotationVector_{j}^{\mathrm{T}}\rotationVector_{k}=\zerosVector\,\,\,\,\rotationVector_{k}^{\mathrm{T}}\rotationVector_{k}=1\]
+
+\item Lagrangian\[
+L\left(\rotationVector_{k},\eigenvalue_{k},\boldsymbol{\gamma}\right)=\rotationVector_{k}^{\mathrm{T}}\sampleCovMatrix\rotationVector_{k}+\eigenvalue_{k}\left(1-\rotationVector_{k}^{\mathrm{T}}\rotationVector_{k}\right)+\sum_{j=1}^{k-1}\gamma_{j}\rotationVector_{j}^{\mathrm{T}}\rotationVector_{k}\]
+\[
+\frac{\mathrm{d}L\left(\rotationVector_{k},\eigenvalue_{k}\right)}{\mathrm{d}\rotationVector_{k}}=2\sampleCovMatrix\rotationVector_{k}-2\eigenvalue_{k}\rotationVector_{k}+\sum_{j=1}^{k-1}\gamma_{j}\rotationVector_{j}\]
+
+\end{itemize}
+Further Eigenvectors
+
+\begin{itemize}
+\item Gradient of Lagrangian:\begin{equation}
+\frac{\mathrm{d}L\left(\rotationVector_{k},\eigenvalue_{k}\right)}{\mathrm{d}\rotationVector_{k}}=2\sampleCovMatrix\rotationVector_{k}-2\eigenvalue_{k}\rotationVector_{k}+\sum_{j=1}^{k-1}\gamma_{j}\rotationVector_{j}\label{eq:gradObjectiveLaterPcs}\end{equation}
+
+\item Premultipling (\ref{eq:gradObjectiveLaterPcs}) by $\rotationVector_{i}$
+with $i<k$ implies\[
+\gamma_{i}=0\]
+which allows us to write \[
+\sampleCovMatrix\rotationVector_{k}=\eigenvalue_{k}\rotationVector_{k}.\]
+
+\item Premultiplying (\ref{eq:gradObjectiveLaterPcs}) by $\rotationVector_{k}$
+implies\[
+\eigenvalue_{k}=\rotationVector_{k}^{\mathrm{T}}\sampleCovMatrix\rotationVector_{k}.\]
+
+\item This is the \emph{$k$th principal component}.
+\end{itemize}
+
+\subsection{Principal Coordinates Analysis}
+
+\begin{itemize}
+\item The rotation which finds directions of maximum variance is the eigenvectors
+of the covariance matrix. 
+\item The variance in each direction is given by the eigenvalues. 
+\item \textbf{Problem:} working directly with the sample covariance, $\sampleCovMatrix$,
+may be impossible. 
+\item For example: perhaps we are given distances between data points, but
+not absolute locations.
+
+\begin{itemize}
+\item No access to absolute positions: cannot compute original sample covariance.
+\end{itemize}
+\end{itemize}
+An Alternative Formalism
+
+\begin{itemize}
+\item Matrix representation of eigenvalue problem for first $\latentDim$
+eigenvectors.\begin{equation}
+\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\rotationMatrix_{\latentDim}=\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}\,\,\,\,\,\rotationMatrix_{q}\in\Re^{\dataDim\times\latentDim}\label{eq:standardEigenvalue}\end{equation}
+
+\item Premultiply by $\hat{\mathbf{Y}}$:\[
+\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\rotationMatrix_{\latentDim}=\hat{\dataMatrix}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}\]
+
+\item Postmultiply by $\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}$
+
+
+\[
+\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}=\hat{\dataMatrix}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+\[
+\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}=\hat{\dataMatrix}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\eigenvalueMatrix_{\latentDim}\]
+\[
+\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvectorMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}\,\,\,\,\,\eigenvectorMatrix_{\latentDim}=\hat{\dataMatrix}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+
+
+\end{itemize}
+$\eigenvectorMatrix_{\latentDim}$ Diagonalizes the Inner Product
+Matrix
+
+\begin{itemize}
+\item Need to prove that $\eigenvectorMatrix_{q}$ are eigenvectors of inner
+product matrix.
+
+
+\[
+\eigenvectorMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\rotationMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+\[
+\eigenvectorMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\rotationMatrix_{\latentDim}^{\mathrm{T}}\left(\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\right)^{2}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+\[
+\eigenvectorMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\rotationMatrix_{\latentDim}^{\mathrm{T}}\rotationMatrix\eigenvalueMatrix^{2}\rotationMatrix^{\mathrm{T}}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+
+
+\item Full eigendecomposition of sample covariance \[
+\mathbf{\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}}=\rotationMatrix\eigenvalueMatrix\rotationMatrix^{\mathrm{T}}\]
+
+\item Implies that \[
+\left(\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}\right)^{2}=\rotationMatrix\eigenvalueMatrix\rotationMatrix^{\mathrm{T}}\rotationMatrix\eigenvalueMatrix\rotationMatrix^{\mathrm{T}}=\rotationMatrix\eigenvalueMatrix^{2}\rotationMatrix^{\mathrm{T}}.\]
+ 
+\end{itemize}
+$\eigenvectorMatrix_{\latentDim}$ Diagonalizes the Inner Product
+Matrix
+
+\begin{itemize}
+\item Need to prove that $\eigenvectorMatrix_{q}$ are eigenvectors of inner
+product matrix.
+
+
+\[
+\eigenvectorMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\rotationMatrix_{\latentDim}^{\mathrm{T}}\rotationMatrix\eigenvalueMatrix^{2}\rotationMatrix^{\mathrm{T}}\rotationMatrix_{\latentDim}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+\[
+\eigenvectorMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\left[\rotationMatrix_{\latentDim}^{\mathrm{T}}\rotationMatrix\eigenvalueMatrix^{2}\rotationMatrix^{\mathrm{T}}\rotationMatrix_{\latentDim}\right]\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+\[
+\eigenvectorMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}{\color{red}\left[\rotationMatrix_{\latentDim}^{\mathrm{T}}\rotationMatrix\eigenvalueMatrix^{2}\rotationMatrix^{\mathrm{T}}\rotationMatrix_{\latentDim}\right]}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+\[
+\eigenvectorMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\eigenvalueMatrix_{q}^{2}\eigenvalueMatrix_{\latentDim}^{-\frac{1}{2}}\]
+
+
+\[
+\eigenvectorMatrix_{\latentDim}^{\mathrm{T}}\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvalueMatrix_{q}\]
+\[
+\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}=\eigenvectorMatrix_{\latentDim}\eigenvalueMatrix_{q}\]
+
+
+\item Product of the first $\latentDim$ eigenvectors with the rest, \[
+\rotationMatrix^{\mathrm{T}}\rotationMatrix_{q}=\left[\begin{array}{c}
+\eye_{\latentDim}\\
+\zerosVector\end{array}\right]\in\Re^{\dataDim\times\latentDim}\]
+where we have used $\eye_{\latentDim}$ to denote a $\latentDim\times\latentDim$
+identity matrix. 
+\item Premultiplying by eigenvalues gives,\[
+\eigenvalueMatrix\rotationMatrix^{\mathrm{T}}\rotationMatrix_{\latentDim}=\left[\begin{array}{c}
+\eigenvalueMatrix_{\latentDim}\\
+\zerosVector\end{array}\right]\]
+
+\item Multiplying by self transpose gives
+
+
+\[
+\rotationMatrix_{\latentDim}^{\mathrm{T}}\rotationMatrix\eigenvalueMatrix^{2}\rotationMatrix^{\mathrm{T}}\rotationMatrix_{\latentDim}=\eigenvalueMatrix_{q}^{2}\]
+\[
+{\color{red}\rotationMatrix_{\latentDim}^{\mathrm{T}}\rotationMatrix\eigenvalueMatrix^{2}\rotationMatrix^{\mathrm{T}}\rotationMatrix_{\latentDim}}=\eigenvalueMatrix_{q}^{2}\]
+\[
+\rotationMatrix_{\latentDim}^{\mathrm{T}}\rotationMatrix\eigenvalueMatrix^{2}\rotationMatrix^{\mathrm{T}}\rotationMatrix_{\latentDim}=\eigenvalueMatrix_{q}^{2}\]
+
+
+\end{itemize}
+Equivalent Eigenvalue Problems
+
+\begin{itemize}
+\item Two eigenvalue problems are equivalent. One solves for the rotation,
+the other solves for the location of the rotated points. 
+\item When $\dataDim<\numData$ it is easier to solve for the rotation,
+$\rotationMatrix_{q}$. But when $\dataDim>N$ we solve for the embedding
+(principal coordinate analysis).
+\item In MDS we may not know $\dataMatrix$, cannot compute $\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}$
+from distance matrix. 
+\item Can we compute $\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}$
+instead?
+\item THe standard transformation
+\end{itemize}
+The Covariance Interpretation
+
+\begin{itemize}
+\item $\numData^{-1}\hat{\dataMatrix}^{\mathrm{T}}\hat{\dataMatrix}$ is
+the data covariance.
+\item $\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}$ is a centred inner
+product matrix.
+
+\begin{itemize}
+\item Also has an interpretation as a covariance matrix (Gaussian processes).
+\item It expresses correlation and anti correlation between \emph{data points}.
+\item Standard covariance expresses correlation and anti correlation between
+\emph{data dimensions}.
+\end{itemize}
+\end{itemize}
+Distance to Similarity: A Gaussian Covariance Interpretation
+
+\begin{itemize}
+\item Translate between covariance and distance.
+
+\begin{itemize}
+\item Consider a vector sampled from a zero mean Gaussian distribution,\[
+\fantasyVector\sim\gaussianSamp{\zerosVector}{\kernelMatrix}.\]
+
+\item Expected square distance between two elements of this vector is\[
+\distanceScalar_{i,j}^{2}=\left\langle \left(\fantasyScalar_{i}-\fantasyScalar_{j}\right)^{2}\right\rangle \]
+\[
+\distanceScalar_{i,j}^{2}=\left\langle z_{i}^{2}\right\rangle +\left\langle z_{j}^{2}\right\rangle -2\left\langle z_{i}z_{j}\right\rangle \]
+under a zero mean Gaussian with covariance given by $\mathbf{K}$
+this is\[
+\distanceScalar_{i,j}^{2}=\kernelScalar_{i,i}+\kernelScalar_{j,j}-2\kernelScalar_{i,j}.\]
+Take the distance to be square root of this,\[
+d_{i,j}=\left(\kernelScalar_{i,i}+\kernelScalar_{j,j}-2\kernelScalar_{i,j}\right)^{\frac{1}{2}}.\]
+
+\end{itemize}
+\end{itemize}
+Standard Transformation
+
+\begin{itemize}
+\item This transformation is known as the \emph{standard transformation}
+between a similarity and a distance \citep[pg 402]{Mardia:multivariate79}. 
+\item If the covariance is of the form $\kernelMatrix=\hat{\dataMatrix}\hat{\dataMatrix}^{\mathrm{T}}$
+then $\kernelScalar_{i,j}=\dataVector_{i,:}^{\mathrm{T}}\dataVector_{j,:}$
+and \[
+d_{i,j}=\left(\dataVector_{i,:}^{\mathrm{T}}\dataVector_{i,:}+\dataVector_{j,:}^{\mathrm{T}}\dataVector_{j,:}-2\dataVector_{i,:}^{\mathrm{T}}\dataVector_{j,:}\right)^{\frac{1}{2}}=\left\Vert \dataVector_{i,:}-\dataVector_{j,:}\right\Vert _{2}.\]
+
+\item For other distance matrices this gives us an approach to covert to
+a similarity matrix or kernel matrix so we can perform classical MDS.
+\end{itemize}
+
+\subsection{Example: Road Distances with Classical MDS}
+
+\begin{itemize}
+\item Classical example: redraw a map from road distances (see e.g. \citealt{Mardia:multivariate79}).
+\item Here we use distances across Europe. 
+
+\begin{itemize}
+\item Between each city we have road distance.
+\item Enter these in a distance matrix.
+\item Convert to a similarity matrix using the covariance interpretation.
+\item Perform eigendecomposition.
+\end{itemize}
+\item See \url{http://www.cs.man.ac.uk/~neill/dimred}for the data we used.
+\end{itemize}
+Distance Matrix
+
+Convert distances to similarities using {}``covariance interpretation''.
+
+%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.45\textwidth,height=5cm]{\lyxdot \lyxdot /diagrams/demCmdsRoadData3}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demCmdsRoadData5}}
+
+\caption{(a) Road distances between European cities visualised as a matrix.
+(b) similarity matrix derived from these distances. If this matrix
+is a covariance matrix, then expected distance between samples from
+this covariance is given in (a)\emph{.}}
+
+\end{figure}
+
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/demCmdsRoadData1}
+\par\end{centering}
+
+\caption{\texttt{demCmdsRoadData}. Reconstructed locations projected onto true
+map using Procrustes rotations.}
+
+\end{figure}
+
+
+Beware Negative Eigenvalues
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demCmdsRoadData2}}
+\par\end{centering}
+
+\caption{Eigenvalues of the similarity matrix are negative in this case.}
+
+\end{figure}
+
+
+%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demCmdsRoadData}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demCmdsRoadData3}}
+
+\caption{(a) The original distance matrix. (b) The reconstructed distance matrix.}
+
+\end{figure}
+
+
+
+\subsection{Summary}
+
+MDS Conclusions
+
+\begin{itemize}
+\item Multidimensional scaling: preserve a distance matrix.
+\item Classical MDS
+
+\begin{itemize}
+\item a particular objective function
+\item for Classical MDS distance matching is equivalent to maximum variance
+\item spectral decomposition of the similarity matrix
+\end{itemize}
+\item For Euclidean distances in $\dataMatrix$ space classical MDS is equivalent
+to PCA. 
+
+\begin{itemize}
+\item known as principal coordinate analysis (PCO)
+\end{itemize}
+\item Haven't discussed choice of distance matrix.
+\end{itemize}
+
+\chapter{Classical Scaling and Spectral Approaches}
+
+
+\section{High Dimensional Digits}
+
+Motivation for Non-Linear Dimensionality Reduction
+
+\textbf{USPS Data Set Handwritten Digit}
+
+\begin{itemize}
+\item 3648 Dimensions
+
+\begin{itemize}
+\item 64 rows by 57 columns
+
+\begin{itemize}
+\item Space contains more than just this digit.
+\item Even if we sample every nanosecond from now until the end of the universe,
+you won't see the original six!
+\end{itemize}
+\end{itemize}
+5cm
+
+\begin{center}
+%
+\begin{figure}
+
+
+\begin{centering}
+\subfigure[]{\includegraphics[width=20cm]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSix0}}\subfigure[]{\includegraphics[width=20cm]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSixSpace1}}\subfigure[]{\includegraphics[width=20cm]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSixSpace2}}\subfigure[]{\includegraphics[width=20cm]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSixSpace3}}
+\par\end{centering}
+
+\caption{Sampling from the high dimensional space in which the digit lives.}
+
+
+
+\end{figure}
+
+\par\end{center}
+
+\end{itemize}
+Simple Model of Digit
+
+Rotate a 'Prototype'
+
+%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSix1}}\hfill{}\subfigure[]{\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSix2}}\hfill{}\subfigure[]{\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSix3}}\hfill{}\subfigure[]{\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSix4}}\hfill{}\subfigure[]{\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSix5}}\hfill{}\subfigure[]{\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demSix6}}
+
+\caption{Rotation of the digit to form a data set.}
+
+\end{figure}
+
+
+%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demManifoldPrint1}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demManifoldPrint2}}
+
+\texttt{\caption{\texttt{demDigitsManifold{[}1 2], 'all') demDigitsManifold({[}1 2],
+'sixnine'})}
+}
+\end{figure}
+
+
+\begin{itemize}
+\item In practice the data may undergo several distortions.
+
+\begin{itemize}
+\item \emph{e.g.} digits undergo 'thinning', translation and rotation.
+\end{itemize}
+\item For data with 'structure':
+
+\begin{itemize}
+\item we expect fewer distortions than dimensions;
+\item we therefore expect the data to live on a lower dimensional manifold.
+\end{itemize}
+\item Conclusion: deal with high dimensional data by looking for lower dimensional
+non-linear embedding.
+\end{itemize}
+
+\section{Kernel PCA}
+
+Other Distance Similarity Measures
+
+\begin{itemize}
+\item Can use similarity/distance of your choice.
+\item Beware though!
+
+\begin{itemize}
+\item The similarity must be positive semi definite for the distance to
+be Euclidean.
+\item Why? Can immediately see positive definite is sufficient from the
+{}``covariance intepretation''.
+\item For more details see \citep[Theorem 14.2.2]{Mardia:multivariate79}.
+\end{itemize}
+\end{itemize}
+A Class of Similarities for Vector Data
+
+\begin{itemize}
+\item All Mercer kernels are positive semi definite.
+\item Example, squared exponential (also known as RBF or Gaussian)\[
+\kernelScalar_{i,j}=\exp\left(-\frac{\left\Vert \dataVector_{i,:}-\dataVector_{j,:}\right\Vert ^{2}}{2l^{2}}\right).\]
+This leads to a kernel eigenvalue problem.
+\item This is known as Kernel PCA \citealt{Scholkopf:nonlinear98}.
+\end{itemize}
+Implied Distance Matrix
+
+\begin{itemize}
+\item What is the equivalent distance $d_{i,j}$?\[
+d_{i,j}=\sqrt{k_{i,i}+k_{j,j}-2k_{i,j}}\]
+
+\item If point separation is large, $k_{i,j}\rightarrow0$. $k_{i,i}=1$
+and $k_{j,j}=1$.
+\end{itemize}
+\[
+d_{i,j}=\sqrt{2}\]
+
+
+\begin{itemize}
+\item Kernel with RBF kernel projects along axes PCA can produce poor results.
+\item Uses many dimensions to keep dissimilar objects a constant amount
+apart.
+\end{itemize}
+
+\subsection{Implied Distance for Kernel PCA}
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixKpcaCovariance}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demSixKpca360}}
+\par\end{centering}
+
+\caption{(a) similarity matrix for RBF kernel on rotated sixes. (b) implied
+distance matrix for kernel on rotated sixes. Note that most of the
+distances are set to $\sqrt{2}\approx1.41$.}
+
+\end{figure}
+
+
+
+\section{Salt Taffy Effect ? Need to check what John was referring to!}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.55\textwidth]{\lyxdot \lyxdot /diagrams/demSixKpca567_0}\caption{\texttt{demSixKpca}. The fifth, sixth and seventh dimensions of the
+latent space for kernel PCA. Points spread out along axes so that
+dissimilar points are always $\sqrt{2}$ apart.}
+
+\par\end{centering}
+\end{figure}
+
+
+
+\section{Distances along the Manifold}
+
+Outline  
+
+
+\subsection{Data}
+
+Data
+
+%
+\begin{figure}
+\subfigure[\texttt{\small 'plane'}]{\includegraphics[width=0.32\textwidth]{\lyxdot \lyxdot /diagrams/planeData}}
+\subfigure[\texttt{\small 'swissroll'}]{\includegraphics[width=0.32\textwidth]{\lyxdot \lyxdot /diagrams/swissrollData}}\subfigure[\texttt{\small 'trefoil'}]{\includegraphics[width=0.32\textwidth]{\lyxdot \lyxdot /diagrams/trefoilData}}
+
+\caption{Illustrative data sets for the talk. Each data set is generated by
+calling \texttt{generateManifoldData(dataType)}. The \texttt{dataType}
+argument is given below each plot.}
+
+\end{figure}
+
+
+
+\section{Isomap}
+
+Isomap
+
+\begin{itemize}
+\item \emph{\citealt{Tenenbaum:isomap00}}
+\item MDS finds geometric configuration preserving distances 
+\item MDS applied to Manifold distance 
+\item Geodesic Distance = Manifold Distance 
+\item Cannot compute geodesic distance without knowing manifold 
+\end{itemize}
+Isomap
+
+\begin{itemize}
+\item Isomap: define neighbors and compute distances between neighbours.
+\item Geodesic Distance approximated by shortest path through adjacency
+matrix. 
+\end{itemize}
+\includegraphics[width=10cm]{\lyxdot \lyxdot /diagrams/carl/isomap_geodesic}
+
+Isomap Examples%
+\footnote{Data generation Carl Henrik Ek%
+}%
+\begin{figure}
+
+
+\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/planeData}}\hfill{}
+
+\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/demIsomapPlane}}
+
+\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/swissrollData}}\hfill{}\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/demIsomapSwissroll}}
+
+\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/trefoilData}}\hfill{}\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/demIsomapTrefoil}}\caption{Figure}
+
+\end{figure}
+
+
+\texttt{demIsomap}
+
+Isomap: Summary
+
+\begin{itemize}
+\item MDS on shortest path approximation of manifold distance 
+\item [+] Simple 
+\item [+] Intrinsic dimension from eigen spectra 
+\item [-] Solves a very large eigenvalue problem 
+\item [-] Cannot handle holes or non-convex manifold 
+\item [-] Sensitive to {}``short circuit'' 
+\end{itemize}
+
+\section{Maximum Variance Unfolding \citep{Weinberger:learning04}.}
+
+\begin{itemize}
+\item Compute neighborhood, constrain local distances to be preserved.
+
+\begin{itemize}
+\item Maximise the variance in latent space.
+\end{itemize}
+\end{itemize}
+
+\chapter{Spectral Approaches and The Inverse Covariance}
+
+Inverse Covariance
+
+\begin{itemize}
+\item From the {}``covariance interpretation'' we think of the similarity
+matrix as a covariance.
+\item Each element of the covariance is a function of two data points.
+\item Another option is to specify the inverse covariance.
+
+
+If the inverse covariance between two points is zero. Those points
+are independent given all other points.
+
+\begin{itemize}
+\item This is a \emph{conditional independence}. 
+\item Describes how points are connected.
+\end{itemize}
+\item Laplacian Eigenmaps and LLE can both be seen as specifiying the inverse
+covariance.
+\end{itemize}
+LLE Examples
+
+%
+\footnote{7 neighbours used. No playing with settings.%
+}
+
+%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/planeData}}\hfill{}
+
+\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/demLlePlane}}
+
+\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/swissrollData}}\hfill{}\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/demLleSwissroll}}
+
+\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/trefoilData}}\hfill{}\subfigure[]{\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /diagrams/demLleTrefoil}}\caption{Figure}
+
+\end{figure}
+
+
+\texttt{demLle}
+
+Generative
+
+\begin{itemize}
+\item Observed data have been sampled from manifold 
+\item Spectral methods start in the {}``wrong'' end 
+\item \textit{{}``It's a lot easier to make a mess than to clean it up!''} 
+
+\begin{itemize}
+\item Things break or disapear 
+\end{itemize}
+\item How to model observation {}``generation''? 
+\item Laplacian Eigenmaps \citep{Belkin:laplacian03}.
+
+\begin{itemize}
+\item Uses spectral graph theory and information geometric arguments to
+form embedding.
+\item Compute neighborhood, graph Laplacian and seek 2nd lowest eigenvector.
+\end{itemize}
+\end{itemize}
+
+\chapter{Non Spectral MDS}
+
+\textbf{Iterative Methods}
+
+\begin{itemize}
+\item Multidimensional Scaling (MDS) 
+
+\begin{itemize}
+\item Iterative optimisation of a stress function \citep{Kruskal:mds64}.
+\end{itemize}
+\item Sammon Mappings \citep{Sammon:nonlinear69}.
+
+\begin{itemize}
+\item Strictly speaking not a mapping --- similar to iterative MDS.
+\end{itemize}
+\item NeuroScale \citep{Lowe:neuroscale96}
+
+\begin{itemize}
+\item Augmentation of iterative MDS methods with a mapping.
+\end{itemize}
+\end{itemize}
+
+\chapter{Distance Preservation}
+
+\textbf{Local Distance Preservation} 
+
+\begin{itemize}
+\item The dimensionality reduction techniques we have discussed so far preserve
+local distances in data space.
+\item We'll think of that as a mapping
+\end{itemize}
+Distance Preservation
+
+\textbf{Forward Mapping}
+
+\begin{itemize}
+\item Mapping from 1-D latent space to 2-D data space.\[
+\dataScalar{1}=\latentScalar^{2}-0.5,\,\,\,\,\dataScalar{2}=-\latentScalar^{2}+0.5\]
+
+\end{itemize}
+\textbf{Backward Mapping}
+
+\begin{itemize}
+\item Mapping from 2-D data space to 1-D latent.\[
+x=0.5\left(\dataScalar{1}^{2}+\dataScalar{2}^{2}+1\right)\]
+
+\end{itemize}
+%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demBackMapping3}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demBackMapping6}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demBackMapping9}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demBackMapping12}}
+
+\caption{(a) and (b) show the case where the mapping is from the latent space
+to the data space. Here two points close in data space can be far
+in latent space. In (c) and (d) the mapping is from the data space
+to the latent space. Here two points far in data space can be close
+in latent space. }
+
+\end{figure}
+
+
+Tangled String
+
+\begin{itemize}
+\item Sometimes local distance preservation in data space is wrong.
+
+\begin{itemize}
+\item The pink and blue ball should be separated.
+\item But the assumption makes the problem simpler (for spectral methods
+it is convex).
+\end{itemize}
+\includegraphics[width=0.8\columnwidth]{\lyxdot \lyxdot /diagrams/stringInTwoD}\includegraphics[width=0.8\columnwidth]{\lyxdot \lyxdot /diagrams/stringInTwoDwithBalls}\includegraphics[width=0.8\columnwidth]{\lyxdot \lyxdot /diagrams/simpleStringInTwoDwithBalls}
+
+\end{itemize}
+Spectral Approaches
+
+\textbf{Good}
+
+\begin{itemize}
+\item Unique optimum.
+\end{itemize}
+\textbf{But}
+
+\begin{itemize}
+\item Non trivial for dealing with missing data.
+\item Difficult to extend (\emph{e.g.\ }temporal data) in a principled
+way. 
+\end{itemize}
+Summary
+
+\begin{itemize}
+\item We have motivated the need for non-linear dimensionality reduction.
+\item Spectral approaches can achieve this, but they don't lead to probabilistic
+models.
+\item We are looking for a probabilistic approach to encoding the mapping.
+\item Next we will se how point based representations of the latent space
+can be used to achieve this.
+\end{itemize}
+
+\chapter{Nonlinear Probabilistic Dimensionality Reduction}
+
+
+\section{Density Networks and GTM}
+
+Non Linear Probabilistic Methods
+
+%
+\begin{figure}
+
+
+\begin{centering}
+\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/mapping2to3nonLinear}
+\par\end{centering}
+
+\caption{Mapping a two dimensional plane to a higher dimensional space in a
+non-linear way.}
+
+\end{figure}
+
+
+\newpage{}
+
+\textbf{Difficulty for Probabilistic Approaches}
+
+\begin{itemize}
+\item Propagate a probability distribution through a non-linear mapping.
+\item Normalisation of distribution becomes intractable.
+\end{itemize}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.7\textwidth]{\lyxdot \lyxdot /diagrams/gaussianThroughNonlinear}
+\par\end{centering}
+
+\caption{Gaussian distribution propagated through a non-linear mapping.}
+
+\end{figure}
+
+
+
+
+
+\subsection{Density Networks}
+
+[allowframebreaks]Sampling Approach
+
+\begin{itemize}
+\item Proposed as Density Networks \citep{MacKay:wondsa95}
+\item Likelihood is a Gaussian with non-linear mapping from latent space
+to data space for the mean\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{i=1}^{\numData}\prod_{j=1}^{\dataDim}\gaussianDist{\dataScalar_{i,j}}{f_{j}\left(\latentVector_{i,:};\paramVector\right)}{\dataStd^{2}}\]
+\[
+p\left(\latentMatrix\right)=\gaussianDist{\latentVector_{i,:}}{\zerosVector}{\eye}\]
+
+\item Take the mapping to be \emph{e.g.}\ a multi-layer perceptron.
+\item Key idea: share same samples for all data points $\hat{\latentMatrix}_{n}=\hat{\latentMatrix}=\left\{ \hat{\latentVector}_{k,:}\right\} _{k=1}^{\numComponents}$.
+\item Saves computation --- compute the mapping $\numComponents$ times
+instead of $\numComponents\numData$
+\end{itemize}
+Mapping of Points
+
+\begin{itemize}
+\item Mapping points to higher dimensions is easy.
+\end{itemize}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/gaussianThroughNonLinear2d}\caption{One dimensional Gaussian mapped to two dimensions.}
+
+\par\end{centering}
+\end{figure}
+
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.9\textwidth]{\lyxdot \lyxdot /diagrams/gaussianThroughNonLinear3d}\caption{Two dimensional Gaussian mapped to three dimensions.}
+
+\par\end{centering}
+\end{figure}
+
+
+
+\subsection{Likelihood Optimisation}
+
+[allowframebreaks]Log Likelihood
+
+\textbf{Sample approximation to log likelihood:}
+
+\[
+\log p\left(\dataMatrix|\paramVector\right)=\sum_{i=1}^{\numData}\log\frac{1}{\numComponents}\sum_{k=1}^{\numComponents}p\left(\dataVector_{i,:}|\paramVector,\bar{\hat{\latentVector}}_{k,:}\right)\]
+
+
+so we have\[
+\frac{\mathrm{d}}{\mathrm{d}\paramVector}\log p\left(\dataVector_{i,:}|\paramVector\right)=\sum_{k=1}^{\numComponents}\frac{p\left(\dataVector_{i,:}|\paramVector,\hat{\latentVector}_{k,:}\right)}{\sum_{m=1}^{\numComponents}p\left(\dataVector_{i,:}|\paramVector,\hat{\latentVector}_{m,:}\right)}\frac{\mathrm{d}}{\mathrm{d}\paramVector}\log p\left(\dataVector_{i,:}|\paramVector,\hat{\latentVector}_{k,:}\right)\]
+
+
+\selectlanguage{british}%
+\[
+\frac{\mathrm{d}}{\mathrm{d}\paramVector}\log p\left(\dataVector_{i,:}|\paramVector\right)=\sum_{k=1}^{\numComponents}\hat{\pi}_{i,k}\frac{\mathrm{d}}{\mathrm{d}\paramVector}\log p\left(\dataVector_{i,:}|\paramVector,\hat{\latentVector}_{k,:}\right)\]
+
+
+\selectlanguage{english}%
+
+
+\textbf{Note: }$\hat{\pi}{}_{i,k}$ look a bit like the posterior
+over component $k$ for data point $i$.
+
+\begin{itemize}
+\item Use gradient based optimisation to find the mapping.
+\end{itemize}
+
+\subsection{Oil Data}
+
+Oil Data
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demOilDnet4NoGray}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/demOilDnet5NoGray}}
+\par\end{centering}
+
+\caption{Oil data visualised with a density network using an MLP network with
+(a) 100 (b) 400 points in the sample. Nearest neighbour errors: (a)
+22 (b)16. Code can be run with (a)\texttt{ demOilDnet4} (b)\texttt{
+demOilDnet}5}
+
+\end{figure}
+
+
+
+\subsection{GTM}
+
+Generative Topographic Mapping
+
+\begin{itemize}
+\item Generative Topographic Mapping (GTM) \citep{Bishop:gtm_ncomp98} 
+\item Key idea: Lay points out on a \emph{grid.}
+
+\begin{itemize}
+\item Constrained mixture of Gaussians.
+\end{itemize}
+\end{itemize}
+%
+\begin{figure}
+
+
+\begin{centering}
+\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/gaussianThroughNonLinearGTM3d}\caption{One dimensional Gaussian mapped to two dimensions.}
+
+\par\end{centering}
+\end{figure}
+
+
+The GTM Prior
+
+\begin{itemize}
+\item Prior distribution is a mixture model in a latent space.\[
+p\left(\latentMatrix\right)=\prod_{i=1}^{\numData}p\left(\latentVector_{i,:}\right)\]
+ \[
+p\left(\latentVector_{i,:}\right)=\frac{1}{\numComponents}\sum_{k=1}^{\numComponents}\delta\left(\latentVector_{i,:}-\hat{\latentVector}_{k,:}\right)\]
+
+\item The $\hat{\latentVector}_{k,:}$ are laid out on a regular grid.
+\end{itemize}
+Mapping and E-Step
+
+\begin{itemize}
+\item Likelihood is a Gaussian with non-linear mapping from latent space
+to data space for the mean\[
+p\left(\dataMatrix|\latentMatrix,\paramVector\right)=\prod_{i=1}^{\numData}\prod_{j=1}^{\dataDim}\gaussianDist{\dataScalar_{i,j}}{f_{j}\left(\latentVector_{i,:};\mappingMatrix,\rbfWidth\right)}{\dataStd^{2}}\]
+In the original paper \citep{Bishop:gtmncomp98} an RBF network was
+suggested,
+\item In the E-step, posterior distribution over $k$ is given by \[
+\hat{\pi}_{i,k}=\frac{\prod_{j=1}^{\dataDim}\gaussianDist{y_{i,j}}{f_{j}\left(\hat{\latentVector}_{k};\mappingMatrix,l\right)}{\dataStd^{2}}}{\sum_{m=1}^{\numComponents}\prod_{j=1}^{\dataDim}\gaussianDist{y_{i,j}}{f_{j}\left(\hat{\latentVector}_{m};\mappingMatrix,l\right)}{\dataStd^{2}}}\]
+sometimes called the {}``responsibility of component $k$ for data
+point $i$''.
+\end{itemize}
+
+\subsection{Likelihood Optimisation}
+
+Likelihood Optimisation
+
+\begin{itemize}
+\item We then maximise the lower bound on the log likelihood,\[
+\log p\left(\dataVector_{i,:}|\paramVector\right)\geq\left\langle \log p\left(\dataVector_{i,:},\hat{\latentVector}_{k,:}|\paramVector\right)\right\rangle _{q\left(k\right)}-\left\langle \log q\left(k\right)\right\rangle _{q\left(k\right)},\]
+
+\item Free energy part of bound \[
+\left\langle \log p\left(\dataVector_{i,:},\hat{\latentVector}_{k,:}|\paramVector\right)\right\rangle =\sum_{k=1}^{\numComponents}\hat{\pi}_{i,k}\log p\left(\dataVector_{i,:}|\hat{\mathbf{x}}_{k,:},\paramVector\right)+\mathrm{const}\]
+
+\item When optimising parameters in EM, we ignore dependence of $\hat{\pi}_{i,k}$
+on parameters. So we have\[
+\frac{\mathrm{d}}{\mathrm{d}\paramVector}\left\langle \log p\left(\dataVector_{i,:},\hat{\latentVector}_{k,:}|\paramVector\right)\right\rangle =\sum_{k=1}^{\numComponents}\hat{\pi}_{i,k}\frac{\mathrm{d}}{\mathrm{d}\paramVector}\log p\left(\dataVector_{i,:}|\hat{\latentVector}_{k,:},\paramVector\right)\]
+which is very similar to density network result!
+\item Interpretation of posterior is slightly different.
+\end{itemize}
+
+
+Oil Data
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.33\textwidth]{\lyxdot \lyxdot /diagrams/demOilDnet1NoGray}}\includegraphics[width=0.33\textwidth]{\lyxdot \lyxdot /diagrams/demOilDnet2NoGray}\subfigure[]{\includegraphics[width=0.33\textwidth]{\lyxdot \lyxdot /diagrams/demOilDnet3NoGray}}
+\par\end{centering}
+
+\caption{Oil data visualised with the GTM using an RBF network with (a) 10$\times$10
+(b) $20\times20$ and (c) $30\times30$ points in the grid. Nearest
+neighbour errors: (a) 74 (b) 44 (c) 11. These experiments can be recreated
+with (a) \texttt{demOilDnet1} (b) \texttt{demOilDnet2} (c) \texttt{demOilDnet3}.}
+
+\end{figure}
+Magnification Factors
+
+\citep{Bishop:iee_mag97}
+
+Stick Man Data
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.33\textwidth]{\lyxdot \lyxdot /diagrams/demStickDnet1NoGray}}\subfigure[]{\includegraphics[width=0.33\textwidth]{\lyxdot \lyxdot /diagrams/demStickDnet2NoGray}}\subfigure[]{\includegraphics[width=0.33\textwidth]{\lyxdot \lyxdot /diagrams/demStickDnet3NoGray}}
+\par\end{centering}
+
+\caption{Oil data visualised with the GTM using an RBF network with (a) 10$\times$10
+(b) $20\times20$ (c) $30\times30$ points in the grid. Experiments
+can be recreated with (a) \texttt{demStickDnet1} (b) \texttt{demStickDnet2}
+(c) \texttt{demStickDnet3}.}
+
+\end{figure}
+
+
+
+\subsection{Bubblewrap Effect}
+
+Bubblewrap Effect
+
+%
+\begin{figure}
+
+
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.49\textwidth]{\lyxdot \lyxdot /diagrams/bubblewrap}}\hfill{}\subfigure[]{\includegraphics[width=0.49\textwidth]{\lyxdot \lyxdot /diagrams/bubblewrapNonlinear}}
+\par\end{centering}
+
+\caption{The manifold is more like bubblewrap than a piece of paper.}
+
+
+
+\end{figure}
+
+
+Effect of Separated Means
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/gaussianPosteriors1sd}}
+\par\end{centering}
+
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/gaussianPosteriors4sd}}
+\par\end{centering}
+
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /diagrams/gaussianPosteriors16sd}}
+\par\end{centering}
+
+\caption{As Gaussians become further apart the posterior probability becomes
+more abrupt. (a) 1 (b) 4 (c) 16 standard deviations apart. }
+
+\end{figure}
+
+
+Equivalence of GTM and Density Networks
+
+\begin{itemize}
+\item GTM and Density Networks have the same origin. \citep{Bishop:emdn95,MacKay:wondsa95}.
+\item In original Density Networks paper MacKay suggested Importance Sampling
+\citep{MacKay:wondsa95}.
+\item Early work on GTM also used importance sampling.
+\item Main innovation in GTM was to lay points out on a grid (inspired by
+Self Organizing Maps \citep{Kohonen:book01}.
+\end{itemize}
+Non Linear Factor Analysis
+
+\begin{itemize}
+\item Variational approach to dimensionality reduction.
+\item Combine Gaussian prior over latent space with neural network \citep{Honkela:unsupervised04}
+\item Assume variational prior separates.
+\item Optimise with respect to variational distributions.
+\end{itemize}
+Summary
+
+\begin{itemize}
+\item We have explored two point based approaches to dimensionality reduction.
+\item Approaches seem to generalise well even when dimensions of data is
+greater than number of points.
+\item Both approaches are difficult to extend to higher dimensional latent
+spaces 
+
+\begin{itemize}
+\item number of samples/centres required increases exponentially with dimension.
+\end{itemize}
+\item Next we will explore a different probabilistic interpretation of PCA
+and extend that to non-linear models.
+\end{itemize}
+
+\chapter{Gaussian Processes and Dimensionality Reduction}
+
+Outline 
+
+
+\section{Dual Probabilistic PCA}
+
+Dual Probabilistic PCA
+
+\textbf{Probabilistic PCA}
+
+\begin{itemize}
+\item We have seen that PCA has a probabilistic interpretation \citep{Tipping:probpca99}.
+\item It is difficult to `non-linearise' directly.
+\item GTM and Density Networks are an attempt to do so.
+\end{itemize}
+~
+
+\textbf{Dual Probabilistic PCA}
+
+\begin{itemize}
+\item There is an alternative probabilistic interpretation of PCA \citep{Lawrence:pnpca05}.
+\item This interpretation can be made non-linear.
+\item The result is non-linear probabilistic PCA.
+\end{itemize}
+Linear Latent Variable Model III
+
+5cm
+
+{Dual Probabilistic PCA}
+
+\begin{itemize}
+\item Define \emph{linear-Gaussian relationship} between latent variables
+and data.
+
+\begin{itemize}
+\item \textbf{Novel} Latent variable approach:
+
+\begin{itemize}
+\item Define Gaussian prior over \emph{parameters}, $\mappingMatrix$.
+\item Integrate out \emph{parameters}.
+\end{itemize}
+\end{itemize}
+5cm
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/gplvmGraph}
+\par\end{center}
+
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix,\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\mappingMatrix\latentVector_{i,:}}{\dataStd^{2}\eye}\]
+\[
+p\left(\mappingMatrix\right)=\prod_{i=1}^{\dataDim}\gaussianDist{\mappingVector_{i,:}}{\zerosVector}{\eye}\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye}\]
+
+\par\end{center}
+
+\end{itemize}
+Linear Latent Variable Model IV
+
+\textbf{\emph{Dual}} \textbf{Probabilistic PCA Max. Likelihood Soln}
+\citep{Lawrence:gplvm03}
+
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye}\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\kernelMatrix},\,\,\,\,\,\,\,\kernelMatrix=\latentMatrix\mathbf{\latentMatrix}^{\mathrm{T}}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\latentMatrix\right)=-\frac{\dataDim}{2}\log\left|\kernelMatrix\right|-\frac{1}{2}\mbox{tr}\left(\kernelMatrix^{-1}\dataMatrix\dataMatrix^{\mathrm{T}}\right)+\mbox{const.}\]
+If $\eigenvectorMatrix_{\latentDim}^{\prime}$ are first $\latentDim$
+principal eigenvectors of $\dataDim^{-1}\dataMatrix\dataMatrix^{\mathrm{T}}$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\latentMatrix=\mathbf{U^{\prime}}_{\latentDim}\mathbf{L}\rotationMatrix^{\mathrm{T}},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\covarianceMatrix},\,\,\,\,\,\,\,\covarianceMatrix=\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\mappingMatrix\right)=-\frac{\numData}{2}\log\left|\covarianceMatrix\right|-\frac{1}{2}\mbox{tr}\left(\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\right)+\mbox{const.}\]
+If $\eigenvectorMatrix_{\latentDim}$ are first $\latentDim$ principal
+eigenvectors of $\numData^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\mappingMatrix=\eigenvectorMatrix_{\latentDim}\mathbf{L}\rotationMatrix^{\mathrm{T}},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.
+\par\end{center}
+
+Equivalence of Formulations
+
+\textbf{The Eigenvalue Problems are equivalent}
+
+\begin{itemize}
+\item Solution for Probabilistic PCA (solves for the mapping)
+
+
+\[
+\dataMatrix^{\mathrm{T}}\dataMatrix\eigenvectorMatrix_{\latentDim}=\eigenvectorMatrix_{\latentDim}\Lambda_{\latentDim}\,\,\,\,\,\,\,\,\,\,\mappingMatrix=\eigenvectorMatrix_{\latentDim}\mathbf{L}\mathbf{V}^{\mathrm{T}}\]
+
+
+\item Solution for Dual Probabilistic PCA (solves for the latent positions)
+
+
+\[
+\dataMatrix\dataMatrix^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}^{\prime}=\eigenvectorMatrix_{\latentDim}^{\prime}\Lambda_{\latentDim}\,\,\,\,\,\,\,\,\,\,\latentMatrix=\eigenvectorMatrix_{\latentDim}^{\prime}\mathbf{L}\mathbf{V}^{\mathrm{T}}\]
+
+
+\item Equivalence is from\[
+\eigenvectorMatrix_{\latentDim}=\dataMatrix^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}^{\prime}\Lambda_{\latentDim}^{-\frac{1}{2}}\]
+
+\end{itemize}
+
+\section{Gaussian Processes}
+
+Gaussian Process (GP)
+
+\textbf{Prior for Functions}
+
+\begin{itemize}
+\item Probability Distribution over Functions
+\item Functions are infinite dimensional.
+
+\begin{itemize}
+\item Prior distribution over \emph{instantiations} of the function: finite
+dimensional objects.
+\item Can prove by induction that GP is `consistent'.
+\end{itemize}
+\item Mean and Covariance Functions
+\item Instead of mean and covariance matrix, GP is defined by mean function
+and covariance function.
+
+\begin{itemize}
+\item Mean function often taken to be zero or constant.
+\item Covariance function must be \emph{positive definite}.
+\item Class of valid covariance functions is the same as the class of \emph{Mercer
+kernels}. 
+\end{itemize}
+\end{itemize}
+Gaussian Processes II
+
+\textbf{Zero mean Gaussian Process}
+
+\begin{itemize}
+\item A (zero mean) Gaussian process likelihood is of the form\[
+p\left(\dataVector|\latentMatrix\right)=N\left(\dataVector|\mathbf{0},\kernelMatrix\right),\]
+where $\kernelMatrix$ is the covariance function or \emph{kernel}.
+\item The \emph{linear kernel} with noise has the form\[
+\kernelMatrix=\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+
+\item Priors over non-linear functions are also possible.
+
+\begin{itemize}
+\item To see what functions look like, we can sample from the prior process.
+\end{itemize}
+\end{itemize}
+
+\subsection{Covariance Samples}
+
+\textbf{Mention issue of correlation and regression to the mean ---
+\citet[pg 187][]{Stigler:table99}}
+
+\texttt{demCovFuncSample}%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demCovFuncSample4}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demCovFuncSample1}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demCovFuncSample2}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demCovFuncSample3}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demCovFuncSample5}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demCovFuncSample6}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demCovFuncSample7}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demCovFuncSample8}}
+
+\caption{(a) linear kernel, $\kernelMatrix=\latentMatrix\latentMatrix^{\mathrm{T}}$
+(b) RBF kernel with $\gamma=10$, $\alpha=1$ (c) RBF kernel with
+$l=1$, $\alpha=1$ (d) RBF kernel with $l=0.3$, $\alpha=4$ (e)
+MLP kernel with $\alpha=8$, $w=100$ and $b=100$ (f) MLP kernel
+with $\alpha=8$, $b=0$ and $w=100$ (g) bias kernel with $\alpha=1$
+and (h) summed combination of: RBF kernel, $\alpha=1$, $l=0.3$;
+bias kernel, $\alpha=$1; and white noise kernel, $\beta=100$\label{cap:kernelSamples}}
+
+\end{figure}
+
+
+Gaussian Process Regression
+
+\textbf{Posterior Distribution over Functions}
+
+\begin{itemize}
+\item Gaussian processes are often used for regression.
+\item We are given a known inputs $\latentMatrix$ and targets $\dataMatrix$.
+\item We assume a prior distribution over functions by selecting a kernel.
+\item Combine the prior with data to get a \emph{posterior} distribution
+over functions.
+\end{itemize}
+Gaussian Process Regression
+
+\texttt{demRegression}%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.7\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demRegression8}}
+\par\end{centering}
+
+\caption{Examples include WiFi localization, C14 callibration curve.}
+
+\end{figure}
+
+
+Learning Kernel Parameters
+
+Can we determine length scales and noise levels from the data?
+
+\texttt{demOptimiseKern}
+
+%
+\begin{figure}
+
+
+%
+\begin{minipage}[t][1\totalheight]{1\columnwidth}%
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp1}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp3}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp5}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp7}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp9}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp11}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp13}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp15}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp17}}%
+\end{minipage}\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gp/tex/diagrams/demOptimiseGp18}\caption{Optimize kernel}
+
+
+
+\end{figure}
+
+
+Non-Linear Latent Variable Model
+
+5cm
+
+\textbf{Dual Probabilistic PCA}
+
+\begin{itemize}
+\item Define \emph{linear-Gaussian relationship} between latent variables
+and data.
+
+\begin{itemize}
+\item \textbf{Novel} Latent variable approach:
+
+\begin{itemize}
+\item Define Gaussian prior over \emph{parameteters}, $\mappingMatrix$.
+\item Integrate out \emph{parameters}.
+\end{itemize}
+\item Inspection of the marginal likelihood shows ...
+
+\begin{itemize}
+\item The covariance matrix is a covariance function.
+\item We recognise it as the `linear kernel'.
+\end{itemize}
+\end{itemize}
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix,\mappingMatrix\right)=\prod_{i=1}^{n}N\left(\dataVector_{i,:}|\mappingMatrix\latentVector_{i,:},\dataStd^{2}\eye\right)\]
+\[
+p\left(\mappingMatrix\right)=\prod_{i=1}^{d}N\left(\mappingVector_{i,:}|\mathbf{0},\eye\right)\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{d}N\left(\dataVector_{:,j}|\mathbf{0},\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye\right)\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{d}N\left(\dataVector_{:,j}|\mathbf{0},\kernelMatrix\right)\]
+\[
+\kernelMatrix=\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+This is a product of Gaussian processes with linear kernels.\[
+\kernelMatrix=?\]
+Replace linear kernel with non-linear kernel for non-linear model.
+\par\end{center}
+
+\end{itemize}
+Non-Linear Latent Variable Model
+
+\textbf{RBF Kernel}
+
+\begin{itemize}
+\item The RBF kernel has the form $\kernelScalar_{i,j}=\kernelScalar\left(\latentVector_{i,:},\latentVector_{j,:}\right),$
+where
+
+
+\[
+\kernelScalar\left(\latentVector_{i,:},\latentVector_{j,:}\right)=\alpha\exp\left(-\frac{\left(\latentVector_{i,:}-\latentVector_{j,:}\right)^{\mathrm{T}}\left(\latentVector_{i,:}-\latentVector_{j,:}\right)}{2\rbfWidth^{2}}\right).\]
+
+
+\item No longer possible to optimise wrt $\latentMatrix$ via an eigenvalue
+problem.
+\item Instead find gradients with respect to $\latentMatrix,\alpha,\rbfWidth$
+and $\dataStd^{2}$ and optimise using gradient methods.
+\end{itemize}
+
+\subsection{Oil Data}
+
+Oil Data Set
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demOilFull}
+\par\end{centering}
+\end{figure}
+
+
+Oil Data Set II
+
+\textbf{Nearest Neighbour error in }$\latentMatrix$
+
+\begin{itemize}
+\item Nearest neighbour classification in latent space.
+
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+Method & PCA & GTM & GP-LVM\tabularnewline
+\hline
+Errors & 162 & 11 & 1 \tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+\emph{cf} 2 errors in data space.
+\par\end{center}
+
+\end{itemize}
+
+\subsection{Stick Man Data}
+
+Stick Man
+
+\texttt{demStick1}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick1Connected}\caption{The latent space for the stick man motion capture data. }
+
+\par\end{centering}
+\end{figure}
+
+
+
+\section{Model Selection with the GP-LVM}
+
+\begin{itemize}
+\item Observed data have been sampled from low dimensional manifold 
+\item $\dataVector=f(\latentVector)$ 
+\item Idea: Model $f$ rank embedding according to 
+
+\begin{enumerate}
+\item Data fit of $f$ 
+\item Complexity of $f$ 
+\end{enumerate}
+\item How to model $f$? 
+
+\begin{enumerate}
+\item Making as few assumtpions about $f$ as possible? 
+\item Allowing $f$ from as {}``rich'' class as possible? 
+\end{enumerate}
+\end{itemize}
+Gaussian Processes
+
+\begin{itemize}
+\item Generalisation of Gaussian Distribution over \textbf{infinite} index
+sets 
+\item Can be used specify distributions over functions 
+\item Regression \begin{eqnarray*}
+\dataVector & = & f(\latentVector)+\boldsymbol{\epsilon}\\
+p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi}) & = & \int p(\dataMatrix|f,\latentMatrix,\boldsymbol{\Phi})p(f|\latentMatrix,\boldsymbol{\Phi})df\\
+p(f|\latentMatrix,\boldsymbol{\Phi}) & = & \mathcal{\numData}(\mathbf{0},\mathbf{K})\\
+\hat{\boldsymbol{\Phi}} & = & \mathrm{argmax}{}_{\boldsymbol{\Phi}}p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi})\end{eqnarray*}
+ 
+\end{itemize}
+Gaussian Processes%
+\footnote{Images: N.D. Lawrence%
+}
+
+\begin{eqnarray*}
+\mathrm{log}~p(\dataMatrix|\latentMatrix) & = & \underbrace{-\frac{1}{2}\dataMatrix^{\mathrm{T}}(\mathbf{K}+\beta^{-1}\mathbf{I})^{-1}\dataMatrix}_{data-fit}-\\
+ &  & \underbrace{\frac{1}{2}\mathrm{log}~\mathrm{det}(\mathbf{K}+\beta^{-1}\mathbf{I})}_{complexity}-\frac{\numData}{2}\mathrm{log}~2\pi\end{eqnarray*}
+
+
+Gaussian Process Latent Variable Models
+
+\begin{itemize}
+\item GP-LVM models sampling process \begin{eqnarray*}
+\dataVector & = & f(\latentVector)+\boldsymbol{\epsilon}\\
+p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi}) & = & \int p(\dataMatrix|f,\latentMatrix,\boldsymbol{\Phi})p(f|\latentMatrix,\boldsymbol{\Phi})df\\
+p(f|\latentMatrix,\boldsymbol{\Phi}) & = & \mathcal{\numData}(\mathbf{0},\mathbf{K})\\
+\left\{ \hat{\latentMatrix},\hat{\boldsymbol{\Phi}}\right\}  & = & \mathrm{argmax}_{\latentMatrix,\boldsymbol{\Phi}}p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi})\end{eqnarray*}
+ 
+\item Linear: Closed form solution 
+\item Non-Linear: Gradient based solution 
+\end{itemize}
+
+\section{Model Selection}
+
+\begin{itemize}
+\item \emph{Lawrence} - 2003 suggested the use of Spectral algorithms to
+initialise the latent space \textbf{Y} 
+\item \emph{Harmeling} - 2007 evaluated the use of GP-LVM objective for
+model selection 
+
+\begin{itemize}
+\item Comparisons between \textbf{Procrustes} score to ground truth and
+GP-LVM objective 
+\end{itemize}
+\end{itemize}
+Model Selection: Results%
+\footnote{Model selection results kindly provided by Carl Henrik Ek.%
+}
+
+%
+\begin{figure}
+
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/plane_rank}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/plane_rank_bar}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/plane_rank_emb}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/plane_hole}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/plane_hole_rank}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/plane_hole_rank_emb}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/swissroll5_rank}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/swissroll5_rank_bar}}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /diagrams/carl/rank/swissroll5_rank_emb}}\caption{Use of GP-LVM likelihood to select different models.}
+
+\end{figure}
+
+
+
+\section{Summary}
+
+\begin{itemize}
+\item We introduced a dual probabilistic interpretation of PCA.
+\item It was straightforward to non-linearise it using Gaussian processes.
+\item Result is a non-linear probabilistic PCA.
+\item Optimise latent variables rather than integrate them out.
+\item Next: some examples of the model used in applications.
+\end{itemize}
+
+\chapter{Applications}
+
+Videos
+
+
+\section{Style based inverse kinematics }
+
+\citep{Grochow:styleik04}
+
+
+\section{Prior distributions for tracking }
+
+\citep{Urtasun:3dpeople06,Urtasun:priors05}.
+
+
+\section{Assisted drawing}
+
+\citep{Baxter:doodle06}
+
+
+\chapter{Other Topics}
+
+\begin{itemize}
+\item Initialisation 
+\item Local distance preservation 
+\item Dynamical models 
+\item Hierarchical models 
+\item Linear Back Constraints 
+\item Oil Data Comparison 
+\item Vowel data 
+\item WiFi SLAM 
+\item Non-Gaussian data 
+\end{itemize}
+
+\chapter{Outlook}
+
+
+\section{Summary}
+
+Summary
+
+\begin{itemize}
+\item We've advocated Dimenstionality Reduction as a good way of \emph{probabilistic}
+modelling in high dimensions.
+\item Probabilistic techniques map the {}``correct way'' around.
+
+\begin{itemize}
+\item This leads to problems with local minima.
+\end{itemize}
+\item Probabilistic dimensionality reduction is useful in practice.
+\item There are still many open problems to be overcome.
+\end{itemize}
+References
+
+{\tiny \bibliographystyle{abbrvnat}
+\bibliography{lawrence,other,zbooks}
+}{\tiny \par}
+
+\appendix
+Supplementary Material
+
+
+\subsection{Probabilistic PCA Proof}
+
+Maximum Likelihood Solution
+
+\textbf{Probabilistic PCA Max. Likelihood Soln} \citep{Tipping:probpca99}
+
+\begin{itemize}
+\item Implications: search high dimensional data by assuming it is implicitly
+lower dimensional. 
+\end{itemize}
+\begin{center}
+\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye}\]
+\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\covarianceMatrix},\,\,\,\,\,\,\,\covarianceMatrix=\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\mappingMatrix\right)=-\frac{\numData}{2}\log\left|\covarianceMatrix\right|-\frac{1}{2}\mbox{tr}\left(\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\right)+\mbox{const.}\]
+
+\par\end{center}
+
+\textbf{Gradient of log likelihood}
+
+\[
+\frac{\mathrm{d}}{\mathrm{d}\mappingMatrix}\log p\left(\dataMatrix|\mappingMatrix\right)=-\frac{N}{2}\covarianceMatrix^{-1}\mappingMatrix+\frac{1}{2}\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\covarianceMatrix^{-1}\mappingMatrix\]
+Seek fixed points\[
+\zerosVector=-\frac{N}{2}\covarianceMatrix^{-1}\mappingMatrix+\frac{1}{2}\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\covarianceMatrix^{-1}\mappingMatrix\]
+pre-multiply by 2$\covarianceMatrix$\[
+\zerosVector=-N\mappingMatrix+\dataMatrix^{\mathrm{T}}\dataMatrix\covarianceMatrix^{-1}\mappingMatrix\]
+\[
+\frac{1}{\numData}\dataMatrix^{\mathrm{T}}\dataMatrix\covarianceMatrix^{-1}\mappingMatrix=\mappingMatrix\]
+\newpage{}
+
+\textbf{Substitute $\mappingMatrix$ with singular value decomposition}\[
+\mappingMatrix=\eigenvectorMatrix\mathbf{L}\rotationMatrix^{\mathrm{T}}\]
+which implies\begin{align*}
+\covarianceMatrix & =\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye\\
+ & =\eigenvectorMatrix\mathbf{L}^{2}\eigenvectorMatrix^{\mathrm{T}}+\dataStd^{2}\mathbf{I}\end{align*}
+
+
+Using matrix inversion lemma\[
+\covarianceMatrix^{-1}\mappingMatrix=\eigenvectorMatrix\mathbf{L}\left(\dataStd^{2}+\mathbf{L}^{2}\right)^{-1}\rotationMatrix^{\mathrm{T}}\]
+
+
+\textbf{\newpage{}Solution given by}
+
+\[
+\frac{1}{\numData}\mathbf{Y}^{\mathrm{T}}\mathbf{Y}\eigenvectorMatrix=\eigenvectorMatrix\left(\dataStd^{2}+\mathbf{L}^{2}\right)\]
+which is recognised as an eigenvalue problem. 
+
+\begin{itemize}
+\item This implies that the columns of $\eigenvectorMatrix$are the eigenvectors
+of $\frac{1}{\numData}\dataMatrix^{\mathrm{T}}\dataMatrix$ and that
+$\dataStd^{2}+\mathbf{L}^{2}$are the eigenvalues of $\frac{1}{\numData}\dataMatrix^{\mathrm{T}}\dataMatrix$.
+So $l_{i}=\sqrt{\lambda_{i}-\dataStd^{2}}$ where $\lambda_{i}$ is
+the $i$th eigenvalue of $\frac{1}{\numData}\dataMatrix^{\mathrm{T}}\dataMatrix$. 
+\item Further manipulation shows that if we constrain $\mappingMatrix\in\Re^{\dataDim\times\latentDim}$
+then the solution is given by the largest $\latentDim$ eigenvalues.
+\end{itemize}
+Probabilistic PCA Solution
+
+\begin{itemize}
+\item If $\eigenvectorMatrix_{\latentDim}$ are first $\latentDim$ principal
+eigenvectors of $\numData^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\mappingMatrix=\eigenvectorMatrix_{\latentDim}\mathbf{L}\rotationMatrix^{\mathrm{T}},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.
+\end{itemize}
+
+\subsection{Initialisation}
+
+Initialisation
+
+`Swiss Roll'
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/swissRollData}
+\par\end{centering}
+
+\caption{The `Swiss Roll' data set is data in three dimensions that is inherently
+two dimensional.}
+
+\end{figure}
+
+
+Initialisation II
+
+\textbf{Quality of solution is Initialisation Dependent}
+
+\begin{flushright}
+%
+\begin{figure}
+.\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/trSwiss1}\hfill{}\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/trSwiss2}
+
+\caption{\emph{Left:} Swiss roll solution initalised by PCA. \emph{Right:}
+Swiss roll solution initialised by Isomap.}
+
+\end{figure}
+
+\par\end{flushright}
+
+
+\subsection{Back Constraints}
+
+\textsc{NeuroScale}
+
+\textbf{Multi-Dimensional Scaling with a Mapping}
+
+\begin{itemize}
+\item \citet{Lowe:neuroscale96} made latent positions a function of the
+data.\[
+\latentScalar_{ij}=f_{j}\left(\dataVector_{i};\mappingVector\right)\]
+
+
+\begin{itemize}
+\item Function was either multi-layer perceptron or a radial basis function
+network.
+\item Their motivation was different from ours:
+
+\begin{itemize}
+\item They wanted to add the advantages of a true mapping to multi-dimensional
+scaling.
+\end{itemize}
+\end{itemize}
+\end{itemize}
+Back Constraints in the GP-LVM
+
+\textbf{Back Constraints}
+
+\begin{itemize}
+\item We can use the same idea to force the GP-LVM to respect local distances.\citep{Lawrence:backconstraints06}
+\item By constraining each $\latentVector_{i}$ to be a `smooth' mapping
+from $\dataVector_{i}$ local distances can be respected.
+\item This works because in the GP-LVM we maximise wrt latent variables,
+we don't integrate out.
+\item Can use any `smooth' function:
+
+\begin{enumerate}
+\item Neural network.
+\item RBF Network.
+\item Kernel based mapping.
+\end{enumerate}
+\end{itemize}
+Optimising BC-GPLVM
+
+\textbf{Computing Gradients}
+
+\begin{itemize}
+\item GP-LVM normally proceeds by optimising \[
+L\left(\latentMatrix\right)=\log p\left(\dataMatrix|\latentMatrix\right)\]
+with respect to $\latentMatrix$ using $\frac{dL}{d\latentMatrix}$.
+\item The back constraints are of the form\[
+\latentScalar_{ij}=f_{j}\left(\dataVector_{i,:};\mathbf{B}\right)\]
+where $\mathbf{B}$ are parameters.
+\item We can compute $\frac{dL}{d\mathbf{B}}$ via chain rule and optimise
+parameters of mapping.
+\end{itemize}
+Motion Capture Results
+
+\texttt{demStick1} \textbf{and} \texttt{demStick}3
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick1Connected}\includegraphics[width=0.5\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3Connected}
+\par\end{centering}
+
+\caption{The latent space for the motion capture data with (\emph{right}) and
+without (\emph{left}) dynamics. The dynamics us a Gaussian process
+with an RBF kernel. \vspace{-1cm}
+}
+
+\end{figure}
+
+
+.
+
+Stick Man Results
+
+\texttt{demStickResults}
+
+\begin{center}
+\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3AngleLatent}
+\par\end{center}
+
+%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+\includegraphics[scale=0.1]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3Angle1}
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+\includegraphics[scale=0.1]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3Angle2}
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+\includegraphics[scale=0.1]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3Angle3}
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+\includegraphics[scale=0.1]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick3Angle4}
+\par\end{center}%
+\end{minipage}
+
+%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+(a)
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+(b)
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+(c)
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+(d)
+\par\end{center}%
+\end{minipage}
+
+\vspace{0.3cm}
+
+\small Projection into data space from four points in the latent
+space. The inclination of the runner changes becoming more upright.
+
+
+\subsection{Dynamics}
+
+Adding Dynamics
+
+\textbf{MAP Solutions for Dynamics Models}
+
+\begin{itemize}
+\item Data often has a temporal ordering.
+
+\begin{itemize}
+\item Markov-based dynamics are often used.
+\item For the GP-LVM
+
+\begin{itemize}
+\item Marginalising such dynamics is intractable.
+\item But: MAP solutions are trivial to implement.
+\end{itemize}
+\item Many choices: Kalman filter, Markov chains \emph{etc}..
+\item \citet{Wang:gpdm05} suggest using a Gaussian Process.
+\end{itemize}
+\end{itemize}
+Gaussian Process Dynamics
+
+\textbf{GP-LVM with Dynamics}
+
+\begin{itemize}
+\item Autoregressive Gaussian process mapping in latent space between time
+points.
+
+
+\begin{center}
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /oxford/tex/diagrams/demDynamicsArrowPlot6}}
+\par\end{centering}
+\end{figure}
+
+\par\end{center}
+
+\end{itemize}
+Motion Capture Results
+
+\texttt{demStick1} and \texttt{demStick2} 
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick1Connected}\includegraphics[width=0.4\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick2Connected}
+\par\end{centering}
+
+\caption{The latent space for the motion capture data without dynamics (\emph{left}),
+with auto-regressive dynamics (\emph{right}) based on an RBF kernel. }
+
+\end{figure}
+
+
+Regressive Dynamics
+
+\textbf{Inner Groove Distortion}
+
+5cm
+
+\begin{itemize}
+\item Autoregressive unimodal dynamics, $p\left(\latentVector_{t}|\latentVector_{t-1}\right)$
+.
+
+\begin{itemize}
+\item Forces spiral visualisation.
+\item Poorer model due to inner groove distortion.
+\end{itemize}
+4cm
+
+\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /hgplvm/tex/diagrams/innerGroove}
+
+\end{itemize}
+Regressive Dynamics
+
+\textbf{Direct use of Time Variable}
+
+\begin{itemize}
+\item Instead of auto-regressive dynamics, consider regressive dynamics.
+
+\begin{itemize}
+\item Take $\mathbf{t}$ as an input, use a prior $p\left(\latentMatrix|\mathbf{t}\right)$.
+\item User a Gaussian process prior for $p\left(\latentMatrix|\mathbf{t}\right).$
+\item Also allows us to consider variable sample rate data.
+\end{itemize}
+\end{itemize}
+Motion Capture Results
+
+\texttt{demStick1}, \texttt{demStick2} \textbf{and} \texttt{demStick5}
+
+\begin{flushright}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick1Connected}\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick2Connected}\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demStick5Connected}
+\par\end{centering}
+
+\caption{The latent space for the motion capture data without dynamics (\emph{left}),
+with auto-regressive dynamics (\emph{middle}) and with regressive
+dynamics (\emph{right}) based on an RBF kernel. }
+
+\end{figure}
+
+\par\end{flushright}
+
+
+\subsection{Hierarchical GP-LVM}
+
+Hierarchical GP-LVM
+
+\textbf{Stacking Gaussian Processes}
+
+\begin{itemize}
+\item Regressive dynamics provides a simple hierarchy.
+\item The input space of the GP is governed by another GP.
+\item By stacking GPs we can consider more complex hierarchies.
+\item Ideally we should marginalise latent spaces
+
+\begin{itemize}
+\item In practice we seek MAP solutions.
+\end{itemize}
+\end{itemize}
+Two Correlated Subjects
+
+\texttt{demHighFive1}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textheight]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /hgplvm/tex/diagrams/demHighFive_talk}
+\par\end{centering}
+
+\caption{Hierarchical model of a 'high five'.}
+
+\end{figure}
+
+
+Within Subject Hierarchy
+
+\textbf{Decomposition of Body}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.7\textheight]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /hgplvm/tex/diagrams/stickHierarchy}
+\par\end{centering}
+
+\caption{Decomposition of a subject.}
+
+\end{figure}
+
+
+Single Subject Run/Walk
+
+\texttt{demRunWalk1}
+
+\begin{flushright}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textheight]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /hgplvm/tex/diagrams/demWalkRun_talk}
+\par\end{centering}
+
+\caption{Hierarchical model of a walk and a run.}
+
+\end{figure}
+
+\par\end{flushright}
+
+
+\subsection{Linear Back Constraints}
+
+Linear Back Constraints I
+
+\begin{itemize}
+\item Special case of back constraints is a \emph{linear} back constraint.
+
+
+\[
+\latentMatrix=\dataMatrix\mathbf{B}\]
+where $\mathbf{B}\in\Re^{\dataDim\times\latentDim}$.
+
+\item Maximise the likelihood with respect to the projection matrix $\mathbf{B}$.
+\item Seems strange to sacrifice the `non-linearity' of the model in this
+way.
+\item Motivate this through a digits data set.
+\end{itemize}
+Linear Back Constraints II
+
+\textbf{Digits Model with Linear Back Constraints}
+
+%
+\begin{minipage}[t][5cm][c]{0.5\textwidth}%
+\includegraphics[width=1\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_pca}%
+\end{minipage}\hfill{}%
+\begin{minipage}[t][5cm][c]{0.25\textwidth}%
+%
+\begin{minipage}[c][1.2cm]{1\columnwidth}%
+\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_plus}\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_generate_1}%
+\end{minipage}\\
+%
+\begin{minipage}[c][1.2cm]{1\columnwidth}%
+\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_circle}\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_generate_3}%
+\end{minipage}\\
+%
+\begin{minipage}[c][1.2cm]{1\columnwidth}%
+\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_cross}\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_generate_2}%
+\end{minipage}\\
+%
+\begin{minipage}[c][1.2cm]{1\columnwidth}%
+\includegraphics[width=0.15\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_square}\includegraphics[width=0.8\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_generate_4}%
+\end{minipage}%
+\end{minipage}
+
+Linear Back Constraints III
+
+%
+\begin{figure}
+\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_pca}\hfill{}\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/fig_gp}
+
+\caption{Linear projections from PCA (\emph{left}) and linear back constrained
+GP-LVM (\emph{right})}
+
+\end{figure}
+
+
+1-Nearest Neighbour in $\latentMatrix$
+
+\textbf{Comparison for increasing latent dimensionality}
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+$\latentDim$ & \textbf{2} & \textbf{3} & \textbf{4}\tabularnewline
+\hline 
+\begin{tabular}{c}
+PCA\tabularnewline
+Errors\tabularnewline
+\end{tabular} & 131 & 115 & 47\tabularnewline
+\hline 
+\begin{tabular}{c}
+Linear\tabularnewline
+constrained\tabularnewline
+GP-LVM Errors\tabularnewline
+\end{tabular} & 79 & 60 & 39\tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+\emph{c.f.} 24 errors in data space
+\par\end{center}
+
+
+\subsection{Oil Flow Data}
+
+Oil Data I
+
+\textbf{Example Data set}
+
+\begin{itemize}
+\item Oil flow data \citep{Bishop:oil93}.
+
+\begin{itemize}
+\item Three phases of flow (stratified, annular, homogenous).
+\item Twelve measurement probes.
+\item 1000 data points.
+\item We sub-sampled to 100 data points
+\item Compare, with KPCA, MDS, Sammon mappings, PCA and GTM.
+\end{itemize}
+\end{itemize}
+Oil Data II
+
+\begin{center}
+%
+\begin{figure}
+\subfigure[PCA]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/pcaOil100}}\hfill{}\subfigure[Non-metric MDS]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/nonmetricMdsOil100}}\hfill{}\subfigure[Sammon Mapping]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/sammonOil100}}\\
+\subfigure[GTM]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/gtmOil100}}\hfill{}\subfigure[Kernel PCA]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/kpcaOil100}}\hfill{}\subfigure[GP-LVM]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/gplvmOil100}}
+\end{figure}
+
+\par\end{center}
+
+Oil Data III
+
+%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/pcaOil100}}\hfill{}\subfigure[]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/nonmetricMdsOil100}}\hfill{}\subfigure[]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/sammonOil100}}
+
+\subfigure[]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/gtmOil100}}\hfill{}\subfigure[]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/kpcaOil100}}\hfill{}\subfigure[]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/gplvmOil100}}
+
+\caption{(a) PCA, (b) Non-metric MDS (c) Sammon Mapping (d), \emph{right} GTM
+(e) Kernel PCA (f) GP-LVM}
+
+\end{figure}
+
+
+Oil Data IV
+
+\textbf{Nearest neighbour errors in} $\latentMatrix$ \textbf{space}
+
+\begin{itemize}
+\item Nearest neighbour classification in latent space.
+
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+Method & PCA & Non-metric MDS & Sammon Mapping\tabularnewline
+\hline 
+Errors & 20 & 13 & 6\tabularnewline
+\hline 
+Method & GTM{*} & Kernel PCA{*} & GP-LVM\tabularnewline
+\hline 
+Errors & 7 & 13 & 4\tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+{*} These models require parameter selection.
+\par\end{center}
+
+\end{itemize}
+
+\subsection{Vowels with Back Constraints}
+
+Vowel Data
+
+\textbf{Vocal Joystick Data}
+
+\begin{itemize}
+\item Vowel sounds from a vocal joystick system \citep{Bilmes:vocal06}.
+
+\begin{itemize}
+\item \url{http://ssli.ee.washington.edu/vj}
+\end{itemize}
+\item Vowels are from a single speaker and represented as: 
+
+\begin{itemize}
+\item cepstral coefficients (12 dimensions) and 
+\item 'deltas' (further 12 dimensions).
+\end{itemize}
+\item 2700 data points in total (300 for each vowel).
+\end{itemize}
+%
+\begin{figure}
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demVowelsInit}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demVowels2}}
+
+\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demVowelsIsomap}}\hfill{}\subfigure[]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demVowels3}}
+
+\caption{(a) PCA (b) GP-LVM \texttt{demVowels}2 (c) Isomap \texttt{demVowelsIsomap}
+(d) BC-GPLVM \texttt{demVowels}3.  The different vowels are shown
+as follows: \emph{/a/} red cross \emph{/ae/} green circle \emph{/ao/}
+blue plus \emph{/e/} cyan asterix \emph{/i/} pink square \emph{/ibar/}
+yellow diamond \emph{/o/} red down triangle \emph{/schwa/} green up
+triangle and \emph{/u/} blue left triangle.}
+
+\end{figure}
+
+
+1-Nearest Neighbour in $\latentMatrix$
+
+\textbf{Comparison of the Approaches}
+
+\begin{itemize}
+\item Nearest neighbour classification in latent space.
+
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+Method & GP-LVM & Isomap & BC-GP-LVM\tabularnewline
+\hline
+Errors & 226 & 458 & 155 \tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+\emph{cf} 24 errors in data space.
+\par\end{center}
+
+\end{itemize}
+\begin{flushright}
+
+\par\end{flushright}
+
+
+\subsection{WiFi SLAM}
+
+Robot SLAM I
+
+\textbf{Navigating by WiFi}
+
+\begin{itemize}
+\item Wireless access point signal strengths measured by robot moving around
+building.
+\item 215 separate signal strength readings.
+\item 30 separate access points.
+\item Robot moves in two dimensions so we expect data to be inherently 2-D.
+\item Learn GP-LVM, GP-LVM with Dynamics, back constrained GP-LVM and back
+constrained GP-LVM with dynamics.\citep{Ferris:wifi07}
+\end{itemize}
+Robot SLAM II
+
+%
+\begin{figure}
+\subfigure[Standard GP-LVM]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demRobotWireless1}}\hfill{}\subfigure[Standard GP-LVM]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demRobotWireless2}}\\
+\subfigure[Standard GP-LVM]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demRobotWireless3}}\hfill{}\subfigure[Standard GP-LVM]{\includegraphics[width=0.3\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /fgplvm/tex/diagrams/demRobotWireless4}}
+
+\caption{ }
+
+\end{figure}
+
+
+
+\subsection{Non-Gaussian Data}
+
+Non-Gaussian Data
+
+{\textbf{Modelling Binary Data}}
+
+\begin{itemize}
+\item A common form of non-Gaussian data is \emph{binary data.}
+
+\begin{itemize}
+\item Can use Assumed Density Filtering to model binary data.
+\item This can also easily be extended to the Expectation Propagation Algorithm
+\citet{Minka:ep01}.
+\end{itemize}
+\item Practical consquences: 
+
+\begin{itemize}
+\item $d$ times slower.
+\item requires $d$ times more storage.
+\end{itemize}
+\end{itemize}
+Modelling Binary Twos
+
+\textbf{Cedar CD ROM digits}
+
+\begin{itemize}
+\item We model 700 examples of binary 8$\times$8 handwritten twos.
+\item Use a standard GP-LVM (a Gaussian noise assumption).
+\item Compare with ADF approximation for the Bernoulli noise model.
+\end{itemize}
+Twos Results I
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[Gaussian Noise Model]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/trTwos1}}\hfill{}\subfigure[Bernoulli Noise Model]{\includegraphics[width=0.45\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/trTwos2}}
+\par\end{centering}
+
+\caption{ }
+
+\end{figure}
+
+
+Twos Results II
+
+\textbf{Reconstruction of Deleted Pixels}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=1\textwidth]{\lyxdot \lyxdot /\lyxdot \lyxdot /\lyxdot \lyxdot /gplvm/tex/diagrams/trTwoReconstruct}
+\par\end{centering}
+\end{figure}
+
+
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline 
+Reconstruction Method & Pixel Error Rate\tabularnewline
+\hline
+\hline 
+GP-LVM Bernoulli noise & 23.5\%\tabularnewline
+\hline 
+GP-LVM Gaussian noise & 35.9\%\tabularnewline
+\hline 
+Missing pixels `not ink' & 51.5\%\tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{flushright}
+
+\par\end{flushright}
+
+
+
+\end{document}

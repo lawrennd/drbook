@@ -1,0 +1,90 @@
+%\documentclass[final,Comp7X9]{MITPress}
+\documentclass[11pt]{now}
+%\usepackage{subfigure}
+% \usepackage[unicode=true, 
+% bookmarks=true,bookmarksnumbered=false,
+% colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black,%
+% pdfstartview=FitH,%
+% bookmarksopen=true,bookmarksopenlevel=0%
+% plainpages=false,pdfpagelabels,%
+% pagebackref=true,%
+% hyperindex=true,
+% pdftoolbar=false]{hyperref} 
+
+
+\input{fatDefs}
+\input{notationDef}
+\input{definitions}
+% get rid of boxfloats etc from book.
+
+\widowpenalty=2000
+\clubpenalty=2000
+\hyphenpenalty=1000
+\tolerance=1000
+\setlength{\parskip}{3ex plus 2ex minus 2ex}
+
+\makeindex
+\makeglossary
+
+\begin{document}
+
+\isbn{xxxxxxxxxxx}
+
+\DOI{xxxxxx}
+
+
+\abstract{
+abstract
+}
+
+\articletitle{Probabilistic Dimensionality Reduction}
+
+\authorname1{Neil D. Lawrence}
+\affiliation1{Department of Computer Science and Department of Neuroscience}
+\author1address2ndline{385a Glossop Road}
+\author1city{Sheffield}
+\author1zip{S10}
+\author1country{U.K.}
+\author1email{N.Lawrence@dcs.shef.ac.uk}
+
+
+\journal{sample}
+\volume{xx}
+\issue{xx}
+\copyrightowner{xxxxxxxx}
+\pubyear{xxxx}
+\maketitle
+
+\cleardoublepage 
+\pagenumbering{roman}
+\tableofcontents{}
+\clearpage
+
+\setcounter{page}{0}
+\pagenumbering{arabic}
+
+\input{notation.tex}
+
+%%%%%% MAIN TEXT %%%%%%
+
+%\input{thinking}
+%\input{linear}
+\input{nonlinear}
+%\input{gp}
+%\input{dppca}
+
+
+\printglossaries
+\appendix
+
+\bibliographystyle{plainnat}
+\bibliography{lawrence,other,zbooks}
+
+%\printindex
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 

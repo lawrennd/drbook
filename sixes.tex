@@ -1,0 +1,238 @@
+%{
+\begin{octave}
+  %}
+  % Comment/MATLAB set up code
+  importTool('dimred')
+  dimredToolboxes
+  randn('seed', 1e6)
+  rand('seed', 1e6)
+  if ~isoctave
+    colordef white
+  end
+  colorFigs = false;
+  % Text width in cm.
+  textWidth = 13
+%{
+%Start of Comment/MATLAB brackets
+\end{octave}
+In \refchap{chap:thinking} we discussed the use of
+mixtures of Gaussian densities for modelling data. The motivation was
+that the center of each Gaussian density represented a ``prototype''
+data point that was then corrupted through various
+transformations. The corruption of the points was modeled by Gaussian
+densities.  Here we would like to consider a more realistic corruption
+of a prototype.
+
+Let's consider an image of the handwritten digit 6 (image
+br1561\_6.3.pgm), taken from the \fixme{USPS ??} data. The image has
+$64$ rows by $57$ columns, giving a data point which is living in a
+$\dataDim=3,648$ dimensional space. Let's consider a simple model for
+handwritten 6s. We model each pixel independently with a binomial
+distribution\book{ (\refbox{box:multinomial}).}{.} Each pixel is the result of a
+single binomial trial.
+\[
+p(\dataVector) = \prod_{j=1}^\dataDim \binomProb^{\dataScalar_j}
+(1-\binomProb)^{(1-\dataScalar_j)},
+\]
+where the probability across pixels are taken to be independent and
+are governed by the same probability of being on, $\binomProb$. The
+maximum likelihood solution for this parameter is given by the number
+of pixels that are on in the data point divided by the total number of
+pixels\book{ (see \refbox{box:binomial}):}{:}
+\[
+\binomProb = \frac{849}{3,648}.
+\]
+The probability of recovering the original six in any given sample is
+then given by\footnote{Note this is not the binomial distribution
+  which gives probabilities for total number of successes in a series
+  of binary trials, here we don't only need a precise number of
+  successes, we also need the successes to occur at the right pixels.}
+\fixme{Add number of ones}
+\[
+p(\dataVector=\text{given\,image}) = \binomProb^{849}(1-\binomProb)^{3,648 - 849
+}=2.67\times10^{-860}.
+\]
+\begin{boxfloat}
+  \caption{The Binomial Distribution}\label{box:binomial}
+
+  \boxfontsize
+  The binomial distribution is the special case of the multinomial where
+  the outcome of the trials is binary (success or failure). It
+  represents the distribution for a given number of successes in a set
+  number of trials when the probability of success is constant. For a
+  probability of success given by $\binomProb$ the binomial distribution
+  has the form
+  \[
+  p(n|N, \binomProb)=\frac{N!}{n!(N-n)!}  \binomProb^n (1-\binomProb)^{N-n}
+  \]
+  where $n$ is the number of successes and $N$ is the total number of
+  trials. The term $\frac{N!}{n!(N-n)!}$ is known as the binomial
+  coefficient and represents the number of ways in which $n$ successes
+  can occur in $N$ trials (for example 1 success in 2 trials can occur
+  either by success then failure or by failure then success. That's two
+  ways: $\frac{2!}{(1!\times (2-1)!)} = 2$).
+
+  A special case of the binomial is the when $N=1$. Then it is sometimes
+  known as the Bernoulli distribution,
+  \[
+  p(s|\binomProb) = \binomProb^s (1-\binomProb)^{1-s}.
+  \]
+  For a model of binary pixels in an image that assumes each pixel is
+  independent we have
+  \[
+  p(\dataVector|\binomProb) = \prod_{j=1}^{\dataDim}
+  \binomProb^{\dataScalar_j} (1-\binomProb)^{1-\dataScalar_j}
+  \]
+  where $\dataVector$ is a vector of binary pixel values from the image
+  and the image has $\dataDim$ pixels. The negative log likelihood is
+  \[
+  \errorFunction(\binomProb) = -\sum_{j=1}^\dataDim\dataScalar_j \log \binomProb -
+  \sum_{j=1}^{\dataDim}(1-\dataScalar_j) \log(1-\binomProb)
+  \]
+  and gradients with respect to $\binomProb$ can be computed as
+  \[
+  \diff{\errorFunction(\binomProb)}{\binomProb} =
+  \frac{1}{\binomProb}\sum_{j=1}^\dataDim \dataScalar_j -
+  \frac{1}{1-\binomProb}\sum_{j=1}^\dataDim (1-\dataScalar_j)
+  \]
+  which can be re-expressed using the fact that the number of pixels
+  that are on is $\dataDim_1=\sum_{j=1}^\dataDim\dataScalar_j$ and the
+  number of off pixels is $\dataDim -\dataDim_1 = \sum_{j=1}^\dataDim
+  (1-\dataScalar_j)$,
+  \[
+  \diff{\errorFunction(\binomProb)}{\binomProb} = \frac{\dataDim_1}{\binomProb} -
+  \frac{\dataDim-\dataDim_1}{1-\binomProb}
+  \]
+  setting to zero and rearranging we recover
+  \[
+  \binomProb = \frac{\dataDim_1}{\dataDim-\dataDim_1}{1-\binomProb}
+  \]
+  at a stationary point. Further rearrangement leads to
+  \[
+  \binomProb =\frac{\frac{\dataDim_1}{\dataDim-\dataDim_1}}{\left(1 +
+      \frac{\dataDim_1}{\dataDim-\dataDim_1}\right)} =
+  \frac{\dataDim_1}{\dataDim}
+  \]
+  which turns out to be a global minimum of the negative log
+  likelihood. To see this we simply compute the second derivative of the
+  negative log likelihood with respect to $\binomProb$,
+  \[
+  \diffTwo{\errorFunction(\binomProb)}{\binomProb} = -
+  \frac{\dataDim_1}{\binomProb^2} -
+  \frac{\dataDim-\dataDim_1}{(1-\binomProb)^2},
+  \]
+  which will always be negative if $0 \leq \binomProb \leq 1$ as it must
+  be. This implies the negative log likelihood is convex and the
+  stationary point is a global minimum.
+\end{boxfloat}
+This implies that even if we sampled from this model every nanosecond
+between now and the end of the universe\footnote{We follow
+  \cite{MacKay:information03} in assuming that will be in
+  approximately \fixme{$number$} years.} we would still be highly
+unlikely to see the original six. Our expected waiting time would be
+$10^{217}$ years and there is only a \fixme{$fill$} probability of seeing it
+before the universe ends\footnote{This can be computed with the geometric distribution.}. This is clearly a very poor generative
+model of the six. The independence assumption across features (just as
+in \refchap{chap:thinking}) is a very poor one. Let's consider an
+alternative model for handwritten sixes. We generate a data set in the
+following way: we take the prototype 6 and rotate the image 360 times,
+by one degree for reach rotation. This corruption of the prototype 6
+is designed to reflect the sort of corruptions that real prototypes
+might undergo. A rotated 6 is still a 6, and although it is not
+realistic to consider such drastic rotations as we have applied, it
+will be helpful in visualizing the corruption of the data. In
+\reffig{fig:prototypeSix} we show the original digit and rotations of
+10 degrees clockwise and anticlockwise.
+
+\begin{figure}
+  \begin{octave}
+    %end of Comment/MATLAB brackets.
+    %} 
+    close all
+    % Load in the six.
+    sixImage = dimredLoadSix;
+    rows = size(sixImage, 1);
+    col = size(sixImage, 2);
+
+
+    figure(1)
+    imagesc(sixImage);
+    axis off
+    axis equal
+    if ~colorFigs, colormap gray; end
+    printLatexPlot('demSix0', '../../../dimred/tex/diagrams/', 0.33*textWidth);
+    for i = 1:3
+      randImage = rand(rows, col)>length(find(sixImage))/(rows*col);
+      clf
+      imagesc(-randImage);
+      axis off
+      axis equal
+      if ~colorFigs, colormap gray; end
+      printLatexPlot(['demSixSpace' num2str(i)], '../../../dimred/tex/diagrams/', 0.33*textWidth);
+    end
+
+    options.noiseAmplitude = 0;
+    options.subtractMean = false;
+
+    Y = generateManifoldData('six', options);
+
+    ind = [31 11 350 330 310 290];
+    for i = 1:length(ind)
+      clf
+      imagesc(-reshape(Y(ind(i), :), 64, 64))
+      if ~colorFigs, colormap gray; end
+      axis off
+      axis equal
+      printLatexPlot(['demSix' num2str(i)], '../../../dimred/tex/diagrams', 0.33*textWidth);
+    end
+
+    %{
+  \end{octave}
+  \begin{center}
+    \subfigure[Original 6]{\input{../../../dimred/tex/diagrams/demSix0}}\hfill
+    \subfigure[Rotation through 10 degrees clockwise]{\input{../../../dimred/tex/diagrams/demSix3}}\hfill
+    \subfigure[Rotation through 10 degrees anticlockwise]{\input{../../../dimred/tex/diagrams/demSix2}}
+  \end{center}
+  \caption{The prototype 6 taken from the \fixme{USPS} data along with
+    two example rotations of the digit. The original image has been
+    converted to 64$\times$64 to match dimensionality of the rotated
+    images.}\label{fig:prototypeSix}
+\end{figure}
+
+In \reffig{fig:rotatedSixes} we take all 360 examples of the rotated
+digits and visualize these data using principal component analysis.
+and linearly project them down to a two dimensional space (using the
+posterior given in \refsec{sec:ppcaPosterior}). Selected examples from
+the data are also placed on the plot near their corresponding
+projected position. What we see makes intuitive sense. The data,
+projected into the two dimensional space, proscribes a circle. The
+data set is inherently one dimensional. The dimension of the data is
+associated with the rotation transformation. A pure rotation would
+lead to a pure circle. In practice rotation of images requires some
+interpolation and this leads to small corruptions of the latent
+projections away from the circle.
+\begin{figure}
+  \begin{octave}
+    %end of Comment/MATLAB brackets.
+    %} 
+    % close all
+    demSixDistances(4096)
+    printLatexPlot('demSixDistances4096', '../../../dimred/tex/diagrams', 0.9*textWidth);
+    %{
+  \end{octave}
+  \begin{center}
+    \input{../../../dimred/tex/diagrams/demSixDistances4096}
+  \end{center}
+  % \fixme{Another plot that is a zoom in on some portion of the plot??}
+  \caption{Inter-point squared distances for the rotated digits data. Much of the
+    data structure can be seen in the matrix. All points are ordered by
+    angle of rotation. We can see that the distance between two points
+    with similar angle of rotation is small (note in the upper right and
+    lower left corners the low distances associated with 6s rotated by
+    roughly 360 degrees and unrotated 6s.}\label{fig:sixDistances4096}
+\end{figure}
+%}
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "mds"
+%%% End: 

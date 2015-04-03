@@ -1,0 +1,1561 @@
+%{
+\begin{matlab}
+  %}
+  % Comment/MATLAB set up code
+  importTool('dimred')
+  dimredToolboxes
+  randn('seed', 1e6)
+  rand('seed', 1e6)
+  if ~isoctave
+    colordef white
+  end
+  % Text width in cm.
+  textWidth = 10
+  %{
+  %   Start of Comment/MATLAB brackets
+\end{matlab}
+
+\chapter{Gaussian Processes}\label{chap:gp}
+
+
+We started this section by emphasizing the importance of mappings or
+functions in learning problems. We then were sidetracked into talking
+about parameters and the limitations of the Bayesian approach in
+parametric models. It may come somewhat of a surprise, therefore, to
+find that, for a highly flexible class of \emph{non linear} functions,
+Bayesian regression with Gaussian noise is exactly tractable. Gaussian
+processes (GPs) involve a small paradigm shift in the way
+probabilistic models are considered. In a GP, rather than considering
+prior distributions over parameters, we place prior distributions
+directly over functions. These prior distributions consider functions
+that can be nonlinear. Gaussian processes can provide a prior
+distribution that is strongly or weakly periodic. The prior can
+specify that the function is point-symmetric. Gaussian processes are
+particularly attractive priors, not only for their flexibility, but
+also for the tractability of the framework they provide.
+
+% Gaussian distributions are traditionally associated with linearity,
+% and thereby sometimes dismissed as insufficiently powerful. However,
+% in the case of a GP, where correlations are expressed across data
+% points rather than across features, these `linear' models give
+% probability distributions over highly non-linear functions of
+% widespread utility.
+
+\section{Prior Distributions over Functions}
+
+What do we mean by a probability distribution over functions? It is
+perhaps easiest to first of all consider the distribution over the
+output of the function given the inputs. For a given output and input,
+this might be written as $p(f_i|\latentVector_i)$, where $f_i$ is the
+output value of the function associated with the a $d$-dimensional
+input vector $\latentVector_i$. More generally, we could consider a fixed
+length vector, $\mathbf{f}\in \mathbb{R}^{n\times 1}$, of $n$ function
+observations associated with a set of inputs in the form of a
+\emph{design matrix}\footnote{A design matrix is a standard
+  statistical representation of a data set. The term design comes from
+  the idea of experimental design --- these were the design
+  points. Design matrices are represented with features in columns and
+  data points in the rows.} $\latentMatrix=[\latentVector_1, \dots,
+\latentVector_n]^\top \in \mathbb{R}^{n\times d}$. We could then specify
+the joint distribution of these observations (or instantiations) of
+the function, $p(\mathbf{f}|\latentMatrix)$. This is now a \emph{joint}
+distribution over the outputs of the function given the inputs. The
+output vector, $\mathbf{f}$, is $n$-dimensional. Problematically,
+functions are infinite dimensional objects---the true number of points
+in the function, $n$, is infinite. This means that the design matrix
+of all inputs to the function should have infinite rows, and the
+vector of function observations, $\mathbf{f}$, should have infinite
+length. Placing a probability distribution over an infinite
+dimensional object \emph{seems} impossible. How can we normalize such
+a distribution? The important thing to note is that, at least in a
+classical data learning scenario, we will only ever faced with a
+finite number of instantiations of the function. If we think of
+$\left\{\mathbf{f}, \latentMatrix\right\}$ as our finite training data
+set (with finite $n$ training points) the distribution,
+$p\left(\mathbf{f}|\latentMatrix\right)$ once again starts to look
+manageable.
+
+In a real application, we may not observe the function values
+directly, instead we may observe a corruption of the function value by
+noise. Within the probabilistic framework we can represent such a
+corruption by $p(y_i|f_i)$, where $y_i$ is our corrupted
+observation. However, to develop the concept of the Gaussian process
+we will start by considering the situation where we make direct
+observations of the function. This is known as
+interpolation. \fixme{Perhaps say something about interpolation in
+  graphics relating splines to GPs if appropriate?} Gaussian processes
+are applied in practice for interpolation. In particular, a current
+domain of interest is emulation of computer models of climate
+\cite{Santer:design03,Challenor:towards06}. Computer simulation models
+based on physics are slow to run, a climate simulation may take days
+to provide a predicted temperature given a set of initial conditions
+and parameters. This prediction can be seen as a function. In
+emulation with a Gaussian process, the idea is to run the computer
+model at a series of `design' points\footnote{Here the reasons
+  behind the terminology `design points' become clear. These points
+  can be chosen, and a the choice is part of the experimental design
+  --- see Chapter 5 of \cite{Santer:design03}.}, $\latentMatrix$. The
+simulation is run for these design points and the results,
+$\mathbf{f}$, are given to a GP in combination with $\latentMatrix$ as a
+training set. Normally the physics models used are non-stochastic so
+the simulation gives a `noiseless' result. The GP can then be used
+to make predictions for how the simulation would behave in the region
+around the design points. Importantly, as we shall see, these
+predictions come with error bars, that allow us to assess the
+associated degree of uncertainty. This use of GPs is very similar to
+work done in the graphics community \fixme{I wanted to refer to physics
+  models which people emulated with Neural nets here --- not sure what
+  the best reference is though} which emulated physical models of
+motion with machine learning tools such as neural
+networks. Figure~\ref{fig:emulate} shows an example of this type of
+direct observation of a function.
+
+\begin{figure}[htb]
+  \subfigure[]{\includegraphics[width=0.49\textwidth]{../../../gp/tex/diagrams/demInterpolation2NoColour}}\hfill{}
+  \subfigure[]{\includegraphics[width=0.49\textwidth]{../../../gp/tex/diagrams/demInterpolation6NoColour}}
+% demInterpolation
+\caption{Interpolation between data points. Here we are making direct
+  observations of the function, $\mathbf{f}$. This is similar to the
+  situation in emulation, only here we are showing a one dimensional
+  input, whereas an emulator would normally use a multidimensional
+  input to the function. In (a) an interpolation using $n=2$ data
+  points is shown, in (b) a larger number of design points is used,
+  $n=5$. In both plots the mean (solid line) and error bars at two
+  standard deviations (grey background) is shown. Note how the
+  prediction passes exactly through the design points with no
+  uncertainty. As it moves away from the design points the uncertainty
+  increases.}
+\end{figure}
+
+We've already touched on the difficulties of representing an infinite
+dimensional object with a probability distribution: how do you
+normalize it? When the distribution is representing a functional
+relationship it is known as a \emph{stochastic process}. The key trick
+in constructing a process is to understand that whilst the process
+does represents a distribution (in our case a Bayesian prior
+distribution) over an infinite object, this distribution is
+implicit. In practice, we only ever need to make an explicit
+representation over a finite number of observations of the function
+value. Moving from the finite to the infinite requires us to prove
+something known as \emph{consistency}\footnote{This is consistency in
+  the Kolmogorov sense, as opposed to the consistency of the
+  estimator.}. This simply means that we have to show that we can
+marginalize (in the probabilistic sense) the infinite potential
+variables that we haven't yet observed without affecting the
+likelihood of our training data or the predictions over the test
+data. This consistency property does not hold in general. Importantly
+though, under certain conditions, it does for Gaussians.
+
+\section{Non Linear Functions from the Humble Gaussian Distribution}\label{sec:humbleGaussian}
+
+We will return to consistency later in this section, for the moment
+however, we will focus on how the Gaussian distribution can be used
+for creating complex functions. Consistency means that instead of
+thinking about the full Gaussian process we can, instead, consider
+just a Gaussian distribution,
+\begin{eqnarray*}
+  p\left(\mathbf{f}\right) & = & \frac{1}{\left(2\pi\right)^{\frac{n}{2}}\left|\kernelMatrix\right|^{\frac{1}{2}}}\exp\left(-\frac{1}{2}\left(\mathbf{f}-\boldsymbol{\mu}\right)^{\top}\kernelMatrix^{-1}\left(\mathbf{f}-\boldsymbol{\mu}\right)\right)\\
+  & \doteq & \gaussianDist{\mathbf{f}}{\boldsymbol{\mu}}{\kernelMatrix},
+\end{eqnarray*} 
+where, as before, the length of the vector $\mathbf{f}$ is given by
+the number of observations from the function, $n$. The covariance
+matrix is given by $\kernelMatrix$ and the mean vector is given by
+$\boldsymbol{\mu}$.  For the moment, we will consider processes with a
+mean vector of zero, $\boldsymbol{\mu}$, so that,
+\[
+p\left(\mathbf{f}\right)=\gaussianDist{\mathbf{f}}{\mathbf{0}}{\kernelMatrix}
+\]
+although processes with non-zero mean vectors will arise as we develop
+the model.
+
+To see how a Gaussian distribution can represent a nonlinear function,
+we will consider a 25 dimensional Gaussian distribution,
+$\mathbf{f=}\left[f_{1},f_{2}\dots f_{25}\right]^{\top}$ with a
+specific covariance matrix, $\kernelMatrix$. We have shown the elements
+with a given covariance matrix. We plot exactly such an example in
+Figure~\ref{cap:demGPSample}, also giving the covariance matrix. %
+\begin{figure}[htb]
+  \subfigure{\includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/gpCovarianceNoColour}}
+  \hfill
+  \subfigure{\includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/gpSampleNoColour}}
+  % demGpSample
+  \caption{(a) Greyscale plot of a covariance matrix,
+    $\kernelMatrix$. The matrix is visualized as a greyscale image and
+    ranges between one (white) and zero (black). The diagonal elements
+    of this covariance are 1, which means that it can also be seen as
+    a matrix of correlation coefficients. The indices of the variables
+    are given along the axes. Note that variables which are close in
+    index have high correlation, whilst those which are far in index
+    have low correlation. (b) A single 25 dimensional sample from a
+    Gaussian distribution with the covariance matrix given in (a). The
+    points are a 25-dimensional sample from a Gaussian distribution,
+    but the correlation structure and ordering of the indices means
+    that, to the eye, they look like they might have come from some
+    smooth underlying function. \label{cap:demGPSample}}
+
+\end{figure}
+
+
+The covariance matrix in Figure~\ref{cap:demGPSample}(a) shows the
+correlation between points $f_{i}$ and $f_{j}$. The level of
+correlation is larger if $i$ is near to $j$ and there is less
+correlation when $i$ is distant from $j$. By ordering the points by
+their index in the plot in Figure~\ref{cap:demGPSample}(b), combined
+with our choice of covariance matrix, means that the instantiations of
+the function plausibly appear to have been taken from a smooth
+non-linear curve.
+
+What is going on with this sample? One approach to analyzing the
+situation is to look at marginal distributions for a pair of points
+from the 25 dimensional vector. For the case of Gaussian
+distributions, this marginalization is very easy to do. The marginal
+distributions of a multivariate Gaussian are also Gaussian. The mean
+of the marginal is taken from the relevant elements of the mean of the
+joint distribution (in this case that is zero). The covariance of the
+marginal is made up of the relevant rows and columns of the joint
+distribution's covariance matrix. By marginalizing all variables
+except the first and second of our joint Gaussian we obtain a two
+dimensional Gaussian distribution. A contour of this distribution at
+one standard deviation can be depicted as in Figure~\ref{cap:joint12}
+(dashed line). This contour shows that the distribution
+$p\left(f_{1},f_{2}\right)$. Note the strong correlation between
+$f_{1}$ and $f_{2}$. Now imagine that we have been given one of these
+variables, say $f_{1}$, and we wish to examine the distribution of
+$f_{2}$ given this value, $p\left(f_{2}|f_{1}\right)$. This
+distribution can be found by `slicing through' the joint distribution
+along the given value (solid line in Figure~\ref{cap:joint12}(a)). The
+conditional distribution over $f_{2}$ is then found by normalizing the
+resulting slice to obtain the single dimensional Gaussian distribution
+shown as a dash-dot line.  The strong correlation prescribed by the
+joint distribution means that the mass of the conditional distribution
+for $f_{2}$ is located close to the value for $f_{1}$. This
+relationship is encoded through the covariance matrix.
+%
+\begin{figure}[htb]
+\begin{centering}
+  \subfigure{\includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demGpCov2D1_2_3bwNoColour}}
+  \hfill
+  \subfigure{\includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demGpCov2D1_5_3bwNoColour}}
+\end{centering}
+% demGpCov2D([1 2], 1) and demGpCov2D([1 5], 1)
+\caption{(a) Gaussian distribution over $\left[f_{1}
+    f_{2}\right]^\top$ with covariance matrix
+  $\kernelMatrix_{12}=\left[1~0.966\mathrm{;}~0.966~1\right]$. We've
+  visualized a contour of the joint distribution at one standard
+  deviation (dashed line). An observation of $f_{1}$ is indicated by a
+  solid line parallel to the $y$-axis. The conditional distribution
+  for $f_2$ given $f_1$ is then shown along the $y$-axis (dot dash
+  line).\label{cap:joint12} (b) similar for $\left[f_{1}
+    f_{5}\right]^\top$. Covariance is
+  $\kernelMatrix_{15}=\left[1~0.574\mathrm{;}~0.574~1\right]$. When the
+  indices are further apart there is less correlation and the variance
+  of the conditional distribution is much larger.\label{cap:joint15}}
+
+\end{figure}
+
+Contrast this situation with that that occurs when the two indices are
+further separated. In Figure~\ref{cap:joint15}(b) we show the same set
+of plots for the variables $f_{1}$ and $f_{5}$. For these two
+variables the correlation is reduced. Less information is provided
+about $f_{5}$ given $f_{1}$ than is provided about $f_{2}$. The
+resulting conditional distribution has a larger variance.
+
+The covariance function is the mechanism through which the covariance
+matrix is generated. Normally, we might thing of a covariance matrix
+as being indexed according to the row and column number,
+$k_{i,j}$. The difference with a covariance function is that it is
+indexed by the inputs to the function,
+\[
+k_{i,j}=k\left(x_{i},x_{j}\right).
+\] 
+In practice, we only ever evaluate the covariance matrix at
+instantiated input locations from our training set, or at regions
+where we wish to make predictions. In the examples we will use to
+introduce GPs we will take these inputs to be one dimensional, but in
+general they could be multi-dimensional vectors, or even structures \cite{structural kernel material}.
+
+The use of Gaussian processes is widespread in geostatistics
+\citep{Cressie:book93,Stein:interpolation99} and they are becoming an
+increasingly popular tool in machine learning, particularly in the
+context of regression \citep{Rasmussen:book06}.  When applied as a
+generic tool for regression a common requirement is that a Gaussian
+process constrains the class of viable functions to be smooth. This
+can be achieved through the squared exponential covariance
+function\footnote{Sometimes known as the radial basis function (RBF)
+  or Gaussian covariance function. We will stick to squared
+  exponential for the moment as we are using RBF and Gaussian in other
+  contexts.},
+\begin{equation}
+  k\left(x_{i},x_{j}\right)=\sigma_{\mathrm{s}}^{2}\exp\left(-\frac{\left(x_{i}-x_{j}\right)^{2}}{2\lengthScale^{2}}\right).\label{eq:rbfCovariance}
+\end{equation}
+This is the covariance function shown in
+Figure~\ref{cap:demGPSample}(b) and the one we used to generate the
+conditional distributions shown in Figure~\ref{cap:joint12}. To give
+an idea of the class of functions that this prior prefers we can
+sample several functions from the prior covariance. The result of
+doing so is given in Figure~\ref{fig:kernSampleRbfPrior}.
+%
+\begin{figure}[htb]
+  \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/gpSampleRbfSamples10Seed100000InverseWidth1Variance1NoColour}\hfill
+  \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/gpSampleRbfSamples10Seed100000InverseWidth16Variance1NoColour}
+
+  %  gpSample('rbf', 10, [1 1], [-3 3], 1e5)
+  %  gpSample('rbf', 10, [16 1], [-3 3], 1e5)
+  \caption{Samples from a Gaussian process prior with the squared
+    exponential covariance function given by
+    (\ref{eq:rbfCovariance}). \emph{Left}: length scale of the
+    covariance function is $\lengthScale=1$, \emph{right}: length
+    scale of the covariance function is
+    $\lengthScale=0.25$.\label{fig:kernSampleRbfPrior}}
+
+\end{figure}
+
+When performing regression with Gaussian processes, a typical scenario is
+that we make direct observations of the function value, $\mathbf{f}$,
+at input locations given by $\latentVector$, known as the training set,
+and we wish to combine them with the covariance function to make
+predictions about the function's values, $\mathbf{f}_{*}$, at another
+set of locations $\latentVector_{*}$, known as the test set.  Inference
+in the Gaussian process then consists of finding the conditional
+distribution of the test data given the training data,
+$p\left(\mathbf{f}_{*}|\mathbf{f}\right)$. The prior distribution for
+the training and test data is a zero mean Gaussian process,
+\[
+p\left(\mathbf{f}_{*},\mathbf{f}\right) = \gaussianDist{\left[\mathbf{f};
+  \mathbf{f}_{*}\right]}{\mathbf{0}}{\kernelMatrix},
+\]
+whose covariance matrix is easily found by partitioning,
+\[
+\kernelMatrix=\left[\begin{array}{cc}
+    \kernelMatrix_{\mathbf{f},\mathbf{f}} & \kernelMatrix_{\mathbf{f},*}\\
+    \kernelMatrix_{*,\mathbf{f}} &
+    \kernelMatrix_{\mathbf{*,*}}\end{array}\right],
+\] 
+such that $\kernelMatrix_{\mathbf{f},\mathbf{f}}$ is the
+covariance matrix associated with $\mathbf{f}$,
+$\kernelMatrix_{*,*}$ is the covariance matrix associated with
+$\mathbf{f}_{*}$ and $\kernelMatrix_{*,\mathbf{f}}$ is the cross
+covariance between $\mathbf{f}_{*}$ and $\mathbf{f}$.  The conditional
+distribution is then Gaussian, 
+\[
+p\left(\mathbf{f}_{*}|\mathbf{f}\right)=\gaussianDist{\mathbf{f}_{*}}{\bar{\mathbf{f}}}{\boldsymbol{\Sigma}},
+\] 
+with
+\[
+\boldsymbol{\Sigma}=\kernelMatrix_{*,*}-\kernelMatrix_{*,\mathbf{f}}\kernelMatrix_{\mathbf{f},\mathbf{f}}^{-1}\kernelMatrix_{\mathbf{f},*}
+\]
+and
+\[
+\bar{\mathbf{f}}=\kernelMatrix_{*,\mathbf{f}}\kernelMatrix_{\mathbf{f},\mathbf{f}}^{-1}\mathbf{f}.
+\]
+These results can be easily derived using the partitioned inverse (see
+for example \citet{Anderson:stats03}). We can see the effect of
+combining a few data points with the prior distribution in
+Figure~\ref{fig:kernSampleRbfPosterior} where we show samples from the
+\emph{posterior process}. We note how the sampled functions are
+constrained to pass through the observations.
+
+%
+\begin{figure}[htb]
+  \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/gpPosteriorSampleRbfSamples5Seed100000InverseWidth1Variance1bwNoColour}\hfill
+  \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/gpPosteriorSampleRbfSamples5Seed100000InverseWidth16Variance1bwNoColour}
+
+  % gpPosteriorSample('rbf', 5, [1 1], [-3 3], 1e5)
+  % gpPosteriorSample('rbf', 5, [16 1], [-3 3], 1e5)
+  \caption{Samples from the conditional distribution over functions
+    given five `training points'. The sampled functions now pass
+    directly through the training data. As for the samples from the
+    prior distributions in Figure~\ref{fig:kernSampleRbfPrior}, the
+    length scale on the \emph{left} is $\lengthScale=1$ whilst the
+    length scale on the \emph{right} is $\lengthScale=0.25$. In each
+    case five samples from the posterior are shown and the training
+    data is shown as black dots.\label{fig:kernSampleRbfPosterior}}
+
+\end{figure}
+
+Gaussian processes provide a powerful framework for interpolation when
+direct observations of the function are available.
+
+\section{Regression: Adding Gaussian Noise}\label{sec:regressionWithNoise}
+
+
+Interpolation involves finding a function which directly passes
+through the data points. In practice, we often find that the data is
+corrupted by noise. If we assume that we observe a noise corrupted
+version of the function,
+\[
+y\left(\latentVector\right) = f\left(\latentVector\right) + \epsilon,
+\]
+where $\epsilon$ represents Gaussian noise, $\epsilon \sim
+\gaussianSamp{0}{\sigma_{\mathrm{w}}^2}$, with variance
+$\sigma^2_\mathrm{w}$. We see that we are actually observing the sum
+of two Gaussian random variables. We can now use the fact that the sum
+of Gaussian variables is also Gaussian. The mean of the resulting
+Gaussian is the sum of the component means and its covariance is the
+sum of the component covariances.  This implies that if
+$f\left(\latentVector\right)$ is drawn from a zero mean Gaussian process,
+and $\epsilon \sim \gaussianSamp{0}{\sigma_{\mathrm{w}}^2}$ then we
+find that $y\left(\latentVector\right)$ is also drawn from a zero mean
+Gaussian process. To find its covariance function, we simply need the
+covariance function of the noise.
+
+The covariance function for the added noise is simply the covariance
+matrix for the noise at the data points. We can think of the noise for
+the training set, $\boldsymbol{\epsilon}$ as being sampled from a
+simple multivariate Gaussian,
+\[
+\boldsymbol{\epsilon} \sim \gaussianSamp{\mathbf{0}}{\sigma^2_{\mathrm{w}}\eye}
+\]
+with a covariance matrix given by $\sigma_\mathrm{w}^2\eye$. How do we
+write this as a covariance function? We make use of the Kronecker
+delta function,
+\[
+k_\mathrm{w}\left(\latentVector_i,\latentVector_j\right) =
+\sigma^2_{\mathrm{w}}\delta_{i,j},
+\]
+denoted by $\delta_{i,j}$. The Kronecker delta takes the value
+$\delta_{i,j}=1$ if $i=j$ and zero otherwise. In other words, this
+covariance function takes the value $\sigma^2_{\mathrm{w}}$ if the
+input indices match, otherwise it is zero. The covariance function for
+$y\left(\latentVector\right)$ can therefore be written as
+\[
+k_y\left(\latentVector_i,\latentVector_j\right) = k_f\left(\latentVector_i,
+  \latentVector_j\right) + \sigma^2_{\mathrm{w}}\delta_{i,j}
+\]
+This leads to a covariance matrix over the training data of the form
+\[
+\kernelMatrix_{\dataVector,\dataVector} = \kernelMatrix_{\mathbf{f},
+  \mathbf{f}} + \sigma^2_\mathbf{w}\eye.
+\]
+This simple change to the covariance matrices follows through when we consider the joint distribution over training and test data,
+\[
+p\left(\dataVector_{*},\dataVector\right) = \gaussianDist{\left[\dataVector;
+    \dataVector_{*}\right]}{\mathbf{0}}{\kernelMatrix+\sigma_\mathrm{w}^2\eye
+} \ .
+\]
+Once again we consider the partition inverse,
+\[
+\kernelMatrix=\left[\begin{array}{cc}
+    \kernelMatrix_{\mathbf{f},\mathbf{f}} +\sigma_\mathrm{w}^2 \eye& \kernelMatrix_{\mathbf{f},*}\\
+    \kernelMatrix_{*,\mathbf{f}} &
+    \kernelMatrix_{\mathbf{*,*}}+\sigma_{\mathrm{w}}^2
+    \eye\end{array}\right].
+\] 
+and predictions can be made with the conditional distribution
+\[
+p\left(\dataVector_{*}|\dataVector\right)=\gaussianDist{\dataVector_{*}}{
+\bar{\dataVector}}{\boldsymbol{\Sigma}},
+\] 
+with the posterior covariance now set to 
+\[
+\boldsymbol{\Sigma}=\kernelMatrix_{*,*} + \sigma_{\mathrm{w}}^2 -
+\kernelMatrix_{*,\mathbf{f}}\left(\kernelMatrix_{\mathbf{f},\mathbf{f}} +
+  \sigma_{\mathrm{w}}^2\eye\right)^{-1} \kernelMatrix_{\mathbf{f},*}
+\]
+and
+\[
+\bar{\dataVector}=\kernelMatrix_{*,\mathbf{f}}
+\left(\kernelMatrix_{\mathbf{f},\mathbf{f}} +
+  \sigma_{\mathrm{w}}^2\eye\right)^{-1}\dataVector.
+\]
+This allows us to make predictions given noisy training data. If we
+use the squared exponential covariance function for
+$f\left(\latentVector\right)$ we can derive the signal to noise ratio for
+our system\footnote{We can compute this signal to noise ratio for all
+  stationary covariance functions. For non-stationary covariance
+  functions the signal to noise ratio will vary across the input
+  space.}. The standard deviation of the signal is given as $\sigma_s$
+(see (\ref{eq:rbfCovariance})) and that of the noise is $\sigma_w$, so
+the signal to noise ratio is given as $\frac{\sigma_s}{\sigma_w}$.
+\begin{figure}[htb]
+  \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/gpPosteriorSampleRbfWhiteSamples5Seed100000Rbf1InverseWidth1Rbf1Variance1White1Variance0p04bwNoColour}\hfill
+  \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/gpPosteriorSampleRbfWhiteSamples5Seed100000Rbf1InverseWidth16Rbf1Variance1White1Variance0p04bwNoColour}
+
+  % gpPosteriorSample({'rbf', 'white'}, 5, [1 1 0.04], [-3 3], 1e5)
+  % gpPosteriorSample({'rbf', 'white'}, 5, [16 1 0.04], [-3 3], 1e5)
+
+  \caption{Samples from the conditional distribution over functions
+    given five `training points'. The covariance function now has a
+    signal to noise ratio of 5:1. The sampled functions now pass
+    directly through the training data. As for the samples from the
+    prior distributions in Figure~\ref{fig:kernSampleRbfPrior}, the
+    length scale on the \emph{left} is $\lengthScale=1$ whilst the
+    length scale on the \emph{right} is $\lengthScale=0.25$. In each
+    case five samples from the posterior are shown and the training
+    data is shown as black dots.\label{fig:kernSampleRbfPosterior}}
+\end{figure}
+
+
+\begin{figure}[htb]
+  \subfigure[]{\includegraphics[width=0.49\textwidth]{../../../gp/tex/diagrams/demRegression2NoColour}}\hfill
+  \subfigure[]{\includegraphics[width=0.49\textwidth]{../../../gp/tex/diagrams/demRegression8NoColour}}
+
+  % demRegression
+
+  \caption{Regression over a few data points. Here we are making noise
+    corrupted observations of the function. In (a) a regression using
+    $n=2$ data points is shown, in (b) a larger number of design
+    points is used, $n=9$. In both plots the mean (solid line) and
+    error bars at two standard deviations (grey shading) is
+    shown. Note how the prediction passes near the design points, but
+    not exactly through them. Again as the prediction moves away from
+    the design points the uncertainty increases.}
+\end{figure}
+
+% \begin{figure}[htb]
+
+
+% \caption{A regression problem with Gaussian noise. In (a) training data are shown along with the prediction across the one-dimensional input space with error bars given by the variance of the predictions. (b) Shows samples from the posterior. Note how [Isolate a point in the error bars where the prediction is high for a bit, and point out how it stays high for a while due to correlation].} 
+% \end{figure}
+
+
+\section{Consistency}
+
+So far we have talked how a Gaussian process can be seen as a Gaussian
+distribution over a fixed number of instantiated points. Our
+description of how prediction is done in a GP really only relied on
+manipulations of a Gaussian distribution. This is possible because the
+GP is \emph{consistent}. Now, we briefly overview what we mean by
+consistency in this context. Gaussian processes are often used in
+\emph{spatial statistics}. A typical application might be to take an
+area of land and predict the level of pollutants in the soil (for
+example the concentration of Cadmium in the soil\footnote{Indeed there
+  are entire books written about such data sets and their analysis
+  with Gaussian processes \cite{Goovaerts:book97}.}). The pollutants
+have been measured in various locations. If you were a consultant
+statistician, a client might come to you with a training set that
+consists of a set of $n$ measurements of Cadmium concentrations,
+$\left\{y_i\right\}_{i=1}^n$, taken from a range of locations, perhaps
+a grid pattern, $\left\{\latentVector_i\right\}_{i=1}^n$, in a region of
+interest. They might then ask for your predictions for Cadmium for a
+number of new locations,
+$\left\{\latentVector_i\right\}_{i=n+1}^{n+n_*}$.
+
+Once you have chosen a covariance function and an appropriate set of
+parameters (for example by maximum likelihood), you can use the
+machinery described above to make predictions for the test locations
+given the training input. If we arrange the training measurements as a
+vector, $\dataVector = \left[y_1,\dots,y_n\right]^\top$, and the test
+predictions as a vector, $\dataVector_* = \left[y_{n+1}, \dots,
+  y_{n+n_*}\right]^\top$, then prediction in this case consists of
+computation of the distribution,
+$p\left(\dataVector_*|\dataVector\right)$. Or, strictly speaking, since
+the covariance matrix we use depends on the input locations,
+$p\left(\dataVector_*|\dataVector, \latentMatrix, \latentMatrix_*\right)$.
+
+We can now apply the techniques described above to make the
+predictions for the client. Note that the predictive distribution for
+$\dataVector_*$ will be a full covariance Gaussian with a non zero
+mean. So as well as predicting a mean value for each point, we are
+also predicting correlations for the error between our
+predictions\footnote{These correlations are difficult to visualize, so
+  they are normally summarized with just variance of the prediction at
+  each point (which can be shown as an error bar). One way of
+  observing these correlations is to sample from the predictive
+  distribution.}
+
+All seems well, but imagine that the client now returns. His boss was
+intrigued by the predictions you gave, and he is now interested in
+predictions of the function at a further $n_{**}$ locations, given by
+$\latentMatrix_{**}$. No problem. You can simply compute the
+distribution, $p\left(\dataVector_{*,*}|\dataVector, \latentMatrix,
+  \latentMatrix_{**}\right)$. Hang on, perhaps you should make the
+predictions for the new test points together with those for the old
+test points and compute $p\left(\dataVector_{*,*},
+  \dataVector_{*}|\dataVector, \latentMatrix, \latentMatrix_*,
+  \latentMatrix_{**}\right)$ instead. There is a potential problem
+here. What happens if these new predictions for the old test points
+are not consistent with the old ones you provided? Specifically,
+bearing in mind that both distributions are Gaussian with particular
+means and covariance matrices, is it true that
+\[
+p\left(\dataVector_{*}|\dataVector, \latentMatrix,
+  \latentMatrix_{*}\right) = \int p\left(\dataVector_{*},
+  \dataVector_{*,*}|\dataVector, \latentMatrix, \latentMatrix_*,
+  \latentMatrix_{**}\right)\mathrm{d}\dataVector_{*,*}?
+\]
+This must hold (due to the sum rule of probability) if our first set
+of predictions on the old test data are to be consistent with our new
+set of predictions on the old test data. If we use Gaussian
+distributions in the manner specified above, this relationship
+\emph{does} hold. Two important properties of the Gaussian allow
+this. Firstly, the marginal distributions of a Gaussian are also
+Gaussian. If the very act of marginalization were to change the class
+of distributions (as it does for most other multivariate
+distributions) then the consistency condition wouldn't hold. After
+marginalization, note that we will still be conditioning on the new
+test data's input locations, so do we find that
+\[
+p\left(\dataVector_{*}|\dataVector, \latentMatrix,
+  \latentMatrix_{*}\right) = p\left(\dataVector_{*},
+  |\dataVector, \latentMatrix, \latentMatrix_*,
+  \latentMatrix_{**}\right)?
+\]
+Once again, this relationship holds for the Gaussian process. The
+input locations of the new test set do not affect our predictions on
+the old test set. As an aside, note that there are situations when we
+would like there to be an effect, \emph{e.g.} in semi-supervised
+learning\footnote{This does not prohibit the use of Gaussian processes for
+semi-supervised learning, but it does mean that you need to use some
+tricks to break the consistency property
+\cite{Lawrence:semisuper04,Lawrence:gpncnm05}.}.
+
+For consistency to hold, it is important that the covariance between a
+pair of outputs of the GP, $\left\{y_i,\ y_j\right\}$ is only
+dependent on the parameters and the two inputs that correspond to
+those outputs, $\left\{\latentVector_i,\ \latentVector_j\right\}$. One can
+easily envisage Gaussian distributions over the outputs for which this
+doesn't hold. For example if the \emph{precision} matrix,
+$\boldsymbol{\Pi}=\kernelMatrix^{-1}$, were to be specified as
+\[
+\pi_{i,j}=\pi\left(\latentVector_i,\latentVector_j\right) 
+\]
+then the corresponding elements of the covariance matrix, $k_{i,j}$,
+would potentially be a function of the all the input data. In this
+case we would find that
+\[
+p\left(\dataVector_{*}|\dataVector, \latentMatrix,
+  \latentMatrix_{*}\right) \neq p\left(\dataVector_{*},
+  |\dataVector, \latentMatrix, \latentMatrix_*,
+  \latentMatrix_{**}\right).
+\]
+even for the Gaussian distribution. 
+
+So far, we have introduced Gaussian processes by considering Gaussian
+distributions over finite sized data sets, and arguing that these
+distributions can be considered as the marginal distribution over a
+fixed dimensional subset of the infinite dimensional function. As we
+have just discussed, this is possible due to consistency of the
+process.
+
+Gaussian processes are a very simple and intuitive way of thinking
+about functions. Algorithmically they only require straightforward
+linear-algebraic manipulations to operate. So, if you have a strong
+understanding of the properties of a multivariate Gaussian, and a good
+background in linear algebra, there \emph{should} be no
+problem. However, conceptually, Gaussian processes are a slightly
+different approach to modelling data. Instead of considering data
+points to be independent, we specify correlations between them. This
+sounds like it is fundamentally different from the standard parametric
+approach to modelling data, in fact it isn't, it is just a different,
+and often more powerful, way of looking at things. In the next chapter
+we will see how the Gaussian process perspective relates to the
+standard parametric approach to functional estimation. By casting a
+parametric model as a Gaussian process we will highlight the
+weaknesses of the parametric approach with respect to
+`non-parametric' models.
+
+
+\section{Other Covariance Functions}\label{sub:covarianceFunctions}
+
+\fixme{Introduce bias covariance function and MLP covariance function --- do samples and compare with parametric equivalents}
+
+By changing the characteristics of the covariance function we can
+sample different functions from the prior. For example, setting each
+element of the covariance matrix to an inner product between the points,
+\[
+k\left(\latentVector_{m},\latentVector_{n}\right)=\alpha\latentVector_{m}^{\top}\latentVector_{n},
+\]
+produces functions that are linear. Note that this covariance function
+can also be written as
+\[
+\kernelMatrix_{\mathbf{f},\mathbf{f}}=\alpha \latentMatrix\latentMatrix^{\top}.
+\]
+\fixme{Describe polynomial covariance --- be clear about disadvantages.}
+ \citet{Williams:infinite96} showed that a multi-layer perceptron
+with infinite hidden nodes has a covariance function of the form
+\[
+k\left(\latentVector_{m},\latentVector_{n}\right)=\alpha\frac{\sqrt{\pi}}{2}\textrm{sin}^{-1}\left(\frac{w\latentVector_{m}^{\top}\latentVector_{n}+b}{\sqrt{w\latentVector_{m}^{\top}\latentVector_{m}+b+1}\sqrt{w\latentVector_{n}^{\top}\latentVector_{n}+b+1}}\right),
+\]
+where a Gaussian prior over the weights from the input to hidden units
+is used with a variance $w$ and a prior over the locations of the
+activation functions with variance $b$. 
+
+Finally a constant offset in the function can be accounted for by
+adding a covariance function which is constant in value. 
+\[
+k\left(\latentVector_{m},\latentVector_{n}\right)=\alpha,
+\]
+we will refer to this as the bias covariance function. \fixme{note the
+  fact that it is not positive definite, merely semi-definite} We show
+some examples of samples associated with tese covariance functions in
+Figure~\ref{cap:kernelSamples}
+
+%
+\begin{figure}[htb]
+\subfigure[Squared Exponential, $\lengthScale=2$, $\alpha=1$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample1NoColour}}\hfill
+\subfigure[Squared Exponential, $\lengthScale=2$, $\alpha=1$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample2NoColour}}\hfill
+\subfigure[Squared Exponential, $\lengthScale=0.3$, $\alpha=4$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample3NoColour}}
+
+\subfigure[Bias, $\alpha=4$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample4NoColour}}\hfill
+\subfigure[Linear, $\alpha=16$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample5NoColour}}\hfill
+\subfigure[Polynomial, $d = 5$, $w=1$, $b=1$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample6NoColour}}
+
+\subfigure[MLP, $w=100$, $b=100$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample7NoColour}}\hfill
+\subfigure[MLP, $w=100$, $b=0$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample8NoColour}}\hfill
+\subfigure[ Squared Exponential, bias and noise., $\alpha_{\mathrm{rbf}}=1$, $\ell=0.3$, $\alpha_{\mathrm{bias}}$, $\alpha_\mathrm{white}=0.01$]{\includegraphics[width=0.3\textwidth]{../../../gp/tex/diagrams/demGpCovFuncSample9NoColour}}
+
+% demGpCovFuncSample
+
+\caption{Samples from different covariance functions.\label{cap:kernelSamples}}
+
+\end{figure}
+
+
+\section{Parameters of the Covariance Function}
+
+The covariance function we described in (\ref{eq:rbfOne}) has a
+parameter: the inverse width. We also saw from the contour plots of
+the correlation between the points, that the maximum standard
+deviation was unity.  If we wish to have a covariance function that
+existed on a non unit scale we need to introduce a further parameter,
+$\alpha$,
+\begin{equation}
+  k\left(\latentVector_{m},\latentVector_{n}\right)=\alpha\exp\left(-\frac{1}{2\lengthScale^2}\left(\latentVector_{m}-\latentVector_{n}\right)^{\top}\left(\latentVector_{m}-\latentVector_{n}\right)\right),\label{eq:rbfTwo}
+\end{equation}
+which controls the variance of the function. Note that this parameter
+$\alpha$ is analogous to $\sigma^2$ (which controls the variance of
+the white noise process). Here $\alpha$ is controlling the variance of
+the function generated by the squared exponential covariance function. In the context of the
+marginal distribution over $\dataVector$,
+\begin{equation}
+  p\left(\dataVector|\alpha,\sigma^2,\lengthScale\right)=N\left(\dataVector|\mathbf{0},\kernelMatrix_{\mathbf{f},\mathbf{f}}+\mathbf{\beta}^{-1}\mathbf{I}\right),\label{eq:gpMarginal2}
+\end{equation}
+where we have made explicit the dependence of the marginal likelihood
+on $\alpha$, $\sigma^2$ and $\lengthScale$. This dependence occurs through
+$\kernelMatrix_{\mathbf{f},\mathbf{f}}$, the elements of which are given
+by (\ref{eq:rbfTwo}), we can view $\sqrt{\alpha\sigma^{-2}}$ as a
+signal to noise ratio. The standard deviation of the signal is
+$\sqrt{\alpha}$ and the standard deviation of the noise is
+$\sqrt{\sigma^2}$. In many kernel methods, these parameters must be
+selected through cross validation. An advantage of the Gaussian
+process point of view is that they can be optimised by maximisation of
+the marginal likelihood
+$p\left(\dataVector|\alpha,\sigma^2,\lengthScale\right)$. This is known as
+empirical Bayes or type II maximum likelihood. Priors can also be
+placed over these parameters and sampling used to estimate their
+posteriors (see \emph{e.g.}\citealt{Williams:Gaussian96}).
+
+
+\section{Parameter Fitting}
+
+One of the advantages of the Gaussian process framework is that the
+probabilistic interpretation underpinning the covariance function
+means that the parameters of the covariance function can easily be
+adapted to maximize the log likelihood of the data.  The negative log
+likelihood of a Gaussian distribution is given by
+\begin{eqnarray}
+  -  \log p\left(\dataVector | \kernelMatrix\right) &=& -\log \gaussianDist{\dataVector}{\mathbf{0}}{\kernelMatrix} \nonumber \\
+  &=& \frac{n}{2}\log 2\pi + \frac{1}{2}\log \left\vert \kernelMatrix \right\vert + \frac{1}{2}\dataVector^\top\kernelMatrix^{-1}\dataVector.
+\end{eqnarray}
+We consider minimization of the negative log likelihood, which is
+equivalent to maximization of the log likelihood. The negative log
+likelihood is composed of two terms. The first is an \emph{entropy},
+$\frac{1}{2}\log \left\vert \kernelMatrix \right\vert + \mathrm{const}$
+and the second an \emph{energy},
+$\frac{1}{2}\dataVector^\top\kernelMatrix^{-1}\dataVector$. The entropy
+term is small when the prior uncertainty is low.  The entropy plays
+the role of `complexity control'. Low entropy means we are more
+certain about what we will see sampled from the Gaussian --- we can
+think of this as meaning there are less possible functions stored in
+the process. By encouraging the entropy to be low we reduce the
+possibility of over fitting: low entropy means that we are considering
+a smaller class of functions to represent the data.
+
+The other term involving the covariance, the matrix quadratic form,
+$\dataVector^\top\kernelMatrix^{-1}\dataVector$, can be thought of as an
+energy term. The model is improved if a configuration of the
+parameters can be found such that the energy is low.
+
+There is a balance between the entropy and energy terms. The best
+likelihood will be found at a compromise between low entropy and low
+energy. It is not possible to reduce the energy to zero (by setting the
+inverse covariance matrix to zero) without massively increasing the
+entropy (it becomes $\infty$). Conversely, a low entropy can be
+achieved by scaling the covariance matrix down. However, this will
+increase the scale of the inverse covariance leading to a
+corresponding increase in the energy term.
+
+We can see the effect of changing the parameters of the covariance
+function on the log likelihood in a simple example of regression with
+noise. In Figure \ref{fig:dataFitting} we show a small example data
+set. Various fits to the data with different length scales are shown
+in Figure \ref{fig:dataFitting}(a). For small length scales the
+posterior mean passes close to the data, but does not interpolate well
+between the data points. The interpolation seems to overfit the
+data. For large length scales the function underfits the data.
+
+
+\begin{figure}[htb]
+  \subfigure[Gaussian process regression with increasing length
+  scales.]{\begin{minipage}[b][0.38\textwidth]{0.60\textwidth}
+      \includegraphics[width=0.32\textwidth]{../../../gp/tex/diagrams/demOptimiseGpTutorial1NoColour}\hfill
+      \includegraphics[width=0.32\textwidth]{../../../gp/tex/diagrams/demOptimiseGpTutorial2NoColour}\hfill
+      \includegraphics[width=0.32\textwidth]{../../../gp/tex/diagrams/demOptimiseGpTutorial3NoColour}\\
+      \includegraphics[width=0.32\textwidth]{../../../gp/tex/diagrams/demOptimiseGpTutorial4NoColour}\hfill
+      \includegraphics[width=0.32\textwidth]{../../../gp/tex/diagrams/demOptimiseGpTutorial5NoColour}\hfill
+      \includegraphics[width=0.32\textwidth]{../../../gp/tex/diagrams/demOptimiseGpTutorial6NoColour}
+\end{minipage}}
+\hfill
+\begin{minipage}[b][0.38\textwidth]{0.38\textwidth}
+  \subfigure[log likelihood vs $\lengthScale$ (length
+  scale)]{\includegraphics[width=0.98\textwidth]{../../../gp/tex/diagrams/demOptimiseGpTutorial7NoColour}}
+\end{minipage}
+% demOptimiseGpTutorial
+\caption{(a) Gaussian process regression applied to a data set, from
+  top left to bottom right the length scale increases, $\lengthScale =
+  0.05, 0.1, 0.25, 0.5, 1, 2, 4, 8$ and $16$. (b) Log-log plot of the
+  log likelihood of the data against the length scales. The log
+  likelihood is shown as a solid line. The negative log likelihood is
+  made up of an entropy term ($\log \left\vert\kernelMatrix\right\vert +
+  \mathrm{const}$) shown by a dotted line and an energy term
+  ($\dataVector^\top\kernelMatrix^{-1}\dataVector$) shown by a dashed
+  line. The energy term reflects the quality of the data fit and is
+  smaller for smaller length scales. The entropy term reflects the
+  complexity of the model and is larger for smaller length scales. The
+  combination of the two terms gives the negative log likelihood which
+  appears to have a minimum around the true length scale value of 1.}
+\label{fig:dataFitting}
+\end{figure}
+
+The quality of the fit is reflected in the plot of the negative
+log-likelihood against length scale in Figure
+\ref{fig:dataFitting}(b). We have also plotted the energy and the
+entropy terms separately. The entropy term decreases monotonically as
+the length scale increases. The energy increases monotonically as the
+length scale increases. When added together they give the negative log
+likelihood which has a visible minimum at a length scale of
+$\lengthScale=1$ (this corresponds to the fit in the bottom left of
+Figure \ref{fig:dataFitting}(a)). This is appropriate as the data was
+originally sampled from a Gaussian process with a squared exponential
+covariance function with a length scale of $\lengthScale=1$. Note
+however, that the fit with the length scale of $\lengthScale=2$ is not
+much lower in likelihood. This is reflected in the corresponding
+plots, where it would certainly be difficult to make a firm choice
+between the two interpolations.
+
+
+\subsection{Optimization Algorithms}
+
+To optimize the covariance function parameters we seek a minimum in
+the negative log likelihood. The log likelihood of the Gaussian
+process is not generally concave --- there can be multiple local
+maxima. The negative log likelihood is therefore non-convex. This
+raises two significant issues that need to be considered when
+optimizing.
+
+\begin{enumerate}
+\item Lack of convexity affects the class of optimization algorithms
+  we can consider.  In optimization terms (since we are minimizing the
+  negative log likelihood) this implies we should consider non-convex
+  optimization algorithms. Gradient information is readily available
+  so obvious choices for finding local minima in the likelihoods
+  include conjugate gradients and quasi-Newton methods such as BFGS
+  \cite[e.g.][]{Zhu:lbfgsb97}. The scaled conjugate gradient algorithm of \cite{Moller:scg93} can also
+  provide good results.
+
+\item When our algorithm converges, how do we know whether we have
+  found a global optimum? Unfortunately, algorithms that guarantee a
+  global optimum in a finite number of iterations do not
+  exist. However, some practical approaches such as restarting the
+  optimization with a different initialization can be helpful. The
+  initialization which converges to the highest likelihood is then
+  used.
+\end{enumerate}
+
+In the examples shown in this review we generally use the scaled
+conjugate gradient algorithm \cite{Moller:scg93} or conjugate gradient
+descent \cite{Hestenes:conjugate52}. The issue of local minima needs to be addressed by
+judicious initialization. Although, an appropriate initialization can
+be difficult to determine for a given problem. As examples are raised
+we will try and give insight into the approaches used for
+initialization.
+
+\section{Basis Representations}
+
+Now since the two variables, $\mathbf{w}$ and $\mathbf{f}$ are only
+related by a inner product, it becomes obvious that if $\mathbf{w}$ is
+Gaussian distributed then, since the matrix $\boldsymbol{\Phi}$ is
+fixed and non-stochastic for a given training set, $\mathbf{f}$ is
+also Gaussian distributed. Indeed, it is straightforward to compute
+the mean and covariance of the corresponding Gaussian distribution for
+$\mathbf{f}$. We simply need to compute the mean of $\mathbf{f}$ and
+its covariance. Using the notation $\left\langle \cdot \right\rangle$
+to denote expectations we then have
+\[
+\left\langle\mathbf{f}\right\rangle =
+\boldsymbol{\phi}\left\langle\mathbf{w}\right\rangle.
+\]
+Which, since the prior mean of $\mathbf{w}$ was zero gives us 
+\[
+\left\langle\mathbf{f}\right\rangle = \mathbf{0}.
+\]
+The covariance is then computed as $\mathbf{K}=\left\langle
+  \mathbf{f}\mathbf{f}^\top\right\rangle -
+\left\langle\mathbf{f}\right\rangle\left\langle\mathbf{f}\right\rangle^\top$,
+\[
+\left\langle \mathbf{f}\mathbf{f}^\top\right\rangle = \boldsymbol{\Phi}\left\langle\mathbf{w}\mathbf{w}^\top\right\rangle\boldsymbol{\Phi}^\top, 
+\]
+which gives
+\[
+\mathbf{K} = \gamma^\prime \boldsymbol{\Phi}\boldsymbol{\Phi}^\top.
+\]
+If we are interested in the prior covariance between two points with
+inputs given by $\mathbf{x}_i$ and $\mathbf{x}_j$, we can write the
+element as a function of those two inputs,
+\[
+k\left(\mathbf{x}_i,\mathbf{x}_j\right) = \gamma^\prime \sum_{\ell}^{m} \phi_\ell\left(\mathbf{x}_i\right) \phi_\ell\left(\mathbf{x}_j\right)
+\]  
+which we will write in vector form as
+\[
+k\left(\mathbf{x}_i,\mathbf{x}_j\right)=\phi_:\left(\mathbf{x}_i\right)^\top\phi_:\left(\mathbf{x}_j\right), \label{eq:degenerateCovariance}
+\]
+where $\phi_:\left(\mathbf{x}_i\right)$ is the $i$th row of
+$\boldsymbol{\Phi}$ as a column vector. For an RBF network, discussed
+above, this gives a covariance function
+\[
+k\left(\mathbf{x}_i,\mathbf{x}_j\right) = \gamma^\prime
+\sum_{\ell=1}^{m} \exp\left( -\frac{\left\vert \mathbf{x}_i -
+      \boldsymbol{\mu}_\ell\right\vert^2 + \left\vert \mathbf{x}_j -
+      \boldsymbol{\mu}_\ell\right\vert^2}{2 \sigma_r^2} \right).
+\]
+Choice of centers and number of basis functions are two of the
+decisions required when constructing an RBF network mapping. For a one
+dimensional input, a sensible choice is to uniformly space them across
+some region,
+\[
+k\left(x_i,x_j\right) = \gamma\Delta\mu \sum_{\ell=1}^{m} \exp\left(
+  -\frac{x^2_i + x^2_j - 2\mu_\ell \left(x_i+x_j\right) +
+    2\mu_\ell^2}{2 \sigma_r^2} \right),
+\]
+By setting each center location to
+\[
+\mu_\ell = a+\Delta\mu\cdot (\ell-1)
+\]
+we can specify the bases in terms of their indices,
+\[
+k\left(x_i,x_j\right) = \gamma\Delta\mu \sum_{\ell=1}^{m} \exp\left(
+  -\frac{x^2_i + x^2_j - 2\left(a+\Delta\mu\cdot \ell\right)
+    \left(x_i+x_j\right) + 2\left(a+\Delta\mu \cdot \ell\right)^2}{2
+    \sigma_r^2} \right).
+\]
+If we now take the location of the leftmost basis function, $\ell=0$,
+to be $\mu_0=a$ and the rightmost basis function to be $\mu_m=b$ we
+can see that $b= a+ \Delta\mu\cdot(m-1)$. Now taking the limit as
+$\Delta\mu\rightarrow 0$ with $b-a$ fixed (so that $m$ is required to
+go to $\infty$) we find\detail{
+
+\[
+k\left(x_i,x_j\right) = \gamma \int_a^b \exp\left( -\frac{x^2_i
++ x^2_j - 2\mu \left(x_i+x_j\right) + 2\mu^2}{2 \sigma_r^2} \right)\mathrm{d}\mu,
+\]
+completing the square gives}
+\[
+k\left(x_i,x_j\right) = \gamma \int_a^b \exp\left( -\frac{x^2_i +
+    x^2_j + 2\left(\mu - \frac{1}{2}\left(x_i + x_j\right)\right)^2
+    -\frac{1}{2}\left(x_i + x_j\right)^2}{2 \sigma_r^2}
+\right)\mathrm{d}\mu,
+\]
+where we have used $\ell\cdot\Delta\mu\rightarrow \mu$.\detail{
+
+\[
+k\left(x_i,x_j\right) = \gamma \frac{\sqrt{\pi\sigma_r^2}}{2}
+\exp\left( -\frac{x^2_i + x^2_j -\frac{1}{2}\left(x_i +
+      x_j\right)^2}{2\sigma_r^2}\right)
+\frac{2}{\sqrt{\pi\sigma_r^2}}\int_a^b \exp\left(-\frac{\left(\mu -
+      \frac{1}{2}\left(x_i + x_j\right)\right)^2}{\sigma_r^2}
+\right)\mathrm{d}\mu,
+\]
+
+\[
+k\left(x_i,x_j\right) = \gamma \frac{\sqrt{\pi\sigma_r^2}}{2}
+\exp\left( -\frac{x_i^2 -2x_ix_j + x_j^2}{4\sigma_r^2}\right)
+\left[1+\mathrm{erf}\left(\frac{\left(\mu - \frac{1}{2}\left(x_i +
+          x_j\right)\right)}{\sigma_r} \right)\right]_a^b,
+\]
+\[
+k\left(x_i,x_j\right) = \gamma \frac{\sqrt{\pi\sigma_r^2}}{2}
+\exp\left( -\frac{\left(x_i-x_j\right)^2}{4\sigma_r^2}\right)
+\left[1+\mathrm{erf}\left(\frac{\left(\mu - \frac{1}{2}\left(x_i +
+          x_j\right)\right)}{\sigma_r} \right)\right]_a^b,
+\]}
+Performing the integration leads to 
+\[
+k\left(x_i,x_j\right) = \gamma \frac{\sqrt{\pi\sigma_r^2}}{2}
+\exp\left( -\frac{\left(x_i-x_j\right)^2}{4\sigma_r^2}\right)
+\left[\mathrm{erf}\left(\frac{\left(b - \frac{1}{2}\left(x_i +
+          x_j\right)\right)}{\sigma_r} \right) -
+  \mathrm{erf}\left(\frac{\left(a - \frac{1}{2}\left(x_i +
+          x_j\right)\right)}{\sigma_r} \right)\right],
+\]
+Finally, if we take the limit as $a\rightarrow -\infty$ and
+$b\rightarrow \infty$ (\emph{i.e.} we have infinite basis functions
+distributed across the entire real line) then the square bracketed
+term on the right becomes 2 and we have
+
+\[
+k\left(x_i,x_j\right) = \alpha \exp\left(
+  -\frac{\left(x_i-x_j\right)^2}{4\sigma_r^2}\right).
+\]
+where we see that $\alpha=\gamma \sqrt{\pi\sigma_r^2}$.
+
+This analysis above shows that if we take a one dimensional RBF
+network and look in the limit as number of basis function becomes
+infinite and they are distributed evenly across the real line we
+recover a Gaussian process with the squared exponential covariance
+function\footnote{Don't be fooled by the fact that functional form for
+  the covariance function is very similar to the basis functions
+  used. This occurs in this special case because of the result you get
+  when you integrate the product of two Gaussians across their
+  mean. Note in particular, that the right covariance function for an
+  infinite neural network does \emph{not} have the form
+  $k\left(x_i,x_j\right) = \tanh\left(x_i x_j + b\right)$! See
+  \cite{Williams:computation98} for more details.}. Similar results
+can obtained for multi-dimensional input networks
+\cite{Williams:computation98}.
+
+\section{Parametric Models Create a Bottleneck for Information}
+
+In the last section, we showed how a Gaussian process with a squared
+exponential covariance function can be seen as a parametric model with
+infinite basis functions. Is there anything more to this result than
+some simple mathematical trickery? What use is this result in
+practice? Firstly, the result is taking us from parametric to
+non-parametric models. The limit we have explored implies that the
+vector $\mathbf{w}$ is infinite dimensional, this is the limit in
+which the parametric becomes non-parametric. In general Gaussian
+processes are non-parametric models: the information we need to make
+predictions is encoded in our data and the covariance function. This
+information, in general, cannot be summarized by a parameter vector of
+a fixed size. In practice this means that parametric models do not
+respond to increasing training set size. Bayesian posterior
+distributions over parameters contain the information about the
+training data that we will require at test time. Traditionally we use
+Bayes' rule to obtain a posterior distribution over our parameters,
+$p\left(\mathbf{w}|\mathbf{y}, \mathbf{X}\right)$, and predictions on
+test data are made through the expectation of the likelihood under
+this posterior,
+\[
+p\left(y_*|\mathbf{X}_*, \mathbf{y}, \mathbf{X}\right) = \int
+p\left(y_*|\mathbf{w},\mathbf{X}_*\right)p\left(\mathbf{w}|\mathbf{y},
+  \mathbf{X})\mathrm{d}\mathbf{w}\right).
+\]
+If we do not change the size of $\mathbf{w}$ in response to an
+increase in the training set size, $n$, we then the vector
+$\mathbf{w}$ becomes a bottleneck for information about the training
+set to pass to the test set. A sensible solution is to increase the
+number of basis functions, $m$ (and correspondingly the size of
+$\mathbf{w}$) so that the bottleneck is so large that it no longer
+presents a problem. However, we are still left with the question, how
+big is big enough for $m$? Non-parametric models avoid this questions
+by taking $m$ to $\infty$. However, in this limit it is no longer
+possible to manipulate the model through the standard parametric form
+given in (\ref{eq:parametricMapping}). Conversely, it
+\emph{is} possible to express \emph{parametric} models within the GP
+framework, we simply express the covariance function in the form given
+in (\ref{eq:degenerateCovariance}). Covariance functions of this form
+are known as \emph{degenerate}. Their rank is at most $m$, whereas the
+covariance functions associated with non-parametric models are always
+full rank.
+
+In the non-parametric framework a prediction for a value at a
+previously unseen input location is made by conditioning on the
+observed function values from the training data to make test
+predictions. For Gaussian processes this involves combining the
+training data with the covariance function and the mean function. The
+parametric framework is the special case when the information required
+for this conditional prediction can be summarized in a \emph{fixed}
+number of parameters. If we take the number of parameters as a proxy
+for the complexity of a model, we immediately see that the complexity
+of a parametric model remains fixed regardless of the size of our
+training data set. If we try to represent a non-parametric model in
+terms of a given number of parameters, we find that the required
+number of parameters grows with the size of the training data.
+
+Note the strong similarity between covariance functions and Mercer
+kernels. These kernel functions are widely used to produce non-linear
+variants of linear algorithms (commonly known as `kernelization' of
+the algorithm). However, the kernel perspective does not make a
+probabilistic interpretation of the covariance function. This
+sometimes leads to simpler algorithms, but probabilistic
+interpretation is crucial when we wish to optimize the parameters of
+the covariance function (as we saw in Section \ref{}). This
+optimization becomes particularly important in the context of the
+dimensionality reduction techniques we review in Section
+\ref{sec:dimRed} where, as we shall see, the latent variables are
+viewed as parameters of the covariance function.
+
+\section{Computational Advantages of Parametric Methods}
+
+\neil{Mention that degenerate covariance functions imply a
+  computational advantage --- briefly review sparse approximations for
+  Gaussian processes as and approach to reducing GPs to the same
+  complexity}
+
+
+
+\section{Dual Probabilistic PCA}
+
+
+\textbf{Probabilistic PCA}
+\begin{itemize}
+\item We have seen that PCA has a probabilistic interpretation \cite{Tipping:probpca99}.
+\item It is difficult to `non-linearise' directly.
+\item GTM and Density Networks are an attempt to do so.
+\end{itemize}
+~
+
+\textbf{Dual Probabilistic PCA}
+\begin{itemize}
+\item There is an alternative probabilistic interpretation of PCA \cite{Lawrence:pnpca05}.
+\item This interpretation can be made non-linear.
+\item The result is non-linear probabilistic PCA.
+\end{itemize}
+
+\section{Linear Latent Variable Model III}
+
+
+
+\begin{itemize}
+\item Define \emph{linear-Gaussian relationship} between latent variables
+and data.
+
+\begin{itemize}
+\item \textbf{Novel} Latent variable approach:
+
+\begin{itemize}
+\item Define Gaussian prior over \emph{parameters}, $\mappingMatrix$.
+\item Integrate out \emph{parameters}.
+\end{itemize}
+\end{itemize}
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{../../../gplvm/tex/diagrams/gplvmGraph}
+\par\end{center}
+
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix,\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\mappingMatrix\latentVector_{i,:}}{\dataStd^{2}\eye}\]
+\[
+p\left(\mappingMatrix\right)=\prod_{i=1}^{\dataDim}\gaussianDist{\mappingVector_{i,:}}{\zerosVector}{\eye}\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye}\]
+
+\par\end{center}
+
+\end{itemize}
+
+\subsection{Linear Latent Variable Model IV}
+
+\textbf{\emph{Dual}} \textbf{Probabilistic PCA Max. Likelihood Soln}
+\cite{Lawrence:gplvm03}
+
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye}\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\kernelMatrix},\,\,\,\,\,\,\,\kernelMatrix=\latentMatrix\mathbf{\latentMatrix}^{\mathrm{T}}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\latentMatrix\right)=-\frac{\dataDim}{2}\log\left|\kernelMatrix\right|-\frac{1}{2}\mbox{tr}\left(\kernelMatrix^{-1}\dataMatrix\dataMatrix^{\mathrm{T}}\right)+\mbox{const.}\]
+If $\eigenvectorMatrix_{\latentDim}^{\prime}$ are first $\latentDim$
+principal eigenvectors of $\dataDim^{-1}\dataMatrix\dataMatrix^{\mathrm{T}}$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\latentMatrix=\mathbf{U^{\prime}}_{\latentDim}\mathbf{L}\rotationMatrix^{\mathrm{T}},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\covarianceMatrix},\,\,\,\,\,\,\,\covarianceMatrix=\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\mappingMatrix\right)=-\frac{\numData}{2}\log\left|\covarianceMatrix\right|-\frac{1}{2}\mbox{tr}\left(\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\right)+\mbox{const.}\]
+If $\eigenvectorMatrix_{\latentDim}$ are first $\latentDim$ principal
+eigenvectors of $\numData^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\mappingMatrix=\eigenvectorMatrix_{\latentDim}\mathbf{L}\rotationMatrix^{\mathrm{T}},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.
+\par\end{center}
+
+Equivalence of Formulations
+
+\textbf{The Eigenvalue Problems are equivalent}
+\begin{itemize}
+\item Solution for Probabilistic PCA (solves for the mapping)
+
+
+\[
+\dataMatrix^{\mathrm{T}}\dataMatrix\eigenvectorMatrix_{\latentDim}=\eigenvectorMatrix_{\latentDim}\Lambda_{\latentDim}\,\,\,\,\,\,\,\,\,\,\mappingMatrix=\eigenvectorMatrix_{\latentDim}\mathbf{L}\mathbf{V}^{\mathrm{T}}\]
+
+
+\item Solution for Dual Probabilistic PCA (solves for the latent positions)
+
+
+\[
+\dataMatrix\dataMatrix^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}^{\prime}=\eigenvectorMatrix_{\latentDim}^{\prime}\Lambda_{\latentDim}\,\,\,\,\,\,\,\,\,\,\latentMatrix=\eigenvectorMatrix_{\latentDim}^{\prime}\mathbf{L}\mathbf{V}^{\mathrm{T}}\]
+
+
+\item Equivalence is from\[
+\eigenvectorMatrix_{\latentDim}=\dataMatrix^{\mathrm{T}}\eigenvectorMatrix_{\latentDim}^{\prime}\Lambda_{\latentDim}^{-\frac{1}{2}}\]
+
+\end{itemize}
+
+% \section{Gaussian Processes}
+
+% \subsection{Gaussian Process (GP)}
+
+% \textbf{Prior for Functions}
+% \begin{itemize}
+% \item Probability Distribution over Functions
+% \item Functions are infinite dimensional.
+
+% \begin{itemize}
+% \item Prior distribution over \emph{instantiations} of the function: finite
+% dimensional objects.
+% \item Can prove by induction that GP is `consistent'.
+% \end{itemize}
+% \item Mean and Covariance Functions
+% \item Instead of mean and covariance matrix, GP is defined by mean function
+% and covariance function.
+
+% \begin{itemize}
+% \item Mean function often taken to be zero or constant.
+% \item Covariance function must be \emph{positive definite}.
+% \item Class of valid covariance functions is the same as the class of \emph{Mercer
+% kernels}. 
+% \end{itemize}
+% \end{itemize}
+% \subsection{Gaussian Processes II}
+
+% \textbf{Zero mean Gaussian Process}
+% \begin{itemize}
+% \item A (zero mean) Gaussian process likelihood is of the form\[
+% p\left(\dataVector|\latentMatrix\right)=N\left(\dataVector|\mathbf{0},\kernelMatrix\right),\]
+% where $\kernelMatrix$ is the covariance function or \emph{kernel}.
+% \item The \emph{linear kernel} with noise has the form\[
+% \kernelMatrix=\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+
+% \item Priors over non-linear functions are also possible.
+
+% \begin{itemize}
+% \item To see what functions look like, we can sample from the prior process.
+% \end{itemize}
+% \end{itemize}
+
+% \subsection{Covariance Samples}
+
+% \textbf{Mention issue of correlation and regression to the mean ---
+% \cite{Stigler:table99}}
+
+% \texttt{demCovFuncSample}%
+% \begin{figure}
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample4}}\hfill{}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample1}}
+
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample2}}\hfill{}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample3}}
+
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample5}}\hfill{}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample6}}
+
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample7}}\hfill{}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample8}}
+
+% \caption{(a) linear kernel, $\kernelMatrix=\latentMatrix\latentMatrix^{\mathrm{T}}$
+% (b) RBF kernel with $\gamma=10$, $\alpha=1$ (c) RBF kernel with
+% $l=1$, $\alpha=1$ (d) RBF kernel with $l=0.3$, $\alpha=4$ (e)
+% MLP kernel with $\alpha=8$, $w=100$ and $b=100$ (f) MLP kernel
+% with $\alpha=8$, $b=0$ and $w=100$ (g) bias kernel with $\alpha=1$
+% and (h) summed combination of: RBF kernel, $\alpha=1$, $l=0.3$;
+% bias kernel, $\alpha=$1; and white noise kernel, $\beta=100$\label{cap:kernelSamples}}
+
+% \end{figure}
+
+
+% \subsection{Gaussian Process Regression}
+
+% \textbf{Posterior Distribution over Functions}
+% \begin{itemize}
+% \item Gaussian processes are often used for regression.
+% \item We are given a known inputs $\latentMatrix$ and targets $\dataMatrix$.
+% \item We assume a prior distribution over functions by selecting a kernel.
+% \item Combine the prior with data to get a \emph{posterior} distribution
+% over functions.
+% \end{itemize}
+% Gaussian Process Regression
+
+% \texttt{demRegression}%
+% \begin{figure}
+% \begin{centering}
+% \subfigure[]{
+
+% \includegraphics[width=0.7\textwidth]{../../../gp/tex/diagrams/demRegression8}}
+% \par\end{centering}
+
+% \caption{Examples include WiFi localization, C14 callibration curve.}
+
+% \end{figure}
+
+
+% \subsection{Learning Kernel Parameters}
+
+% Can we determine length scales and noise levels from the data?
+
+% \texttt{demOptimiseKern}
+
+% %
+% \begin{figure}
+
+
+% %
+% \begin{minipage}[t]{1\columnwidth}%
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp1}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp3}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp5}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp7}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp9}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp11}}
+
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp13}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp15}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp17}}%
+% \end{minipage}\includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp18}\caption{Optimize kernel}
+
+
+
+% \end{figure}
+
+
+\subsection{Non-Linear Latent Variable Model}
+
+\textbf{Dual Probabilistic PCA}
+\begin{itemize}
+\item Define \emph{linear-Gaussian relationship} between latent variables
+and data.
+
+\begin{itemize}
+\item \textbf{Novel} Latent variable approach:
+
+\begin{itemize}
+\item Define Gaussian prior over \emph{parameteters}, $\mappingMatrix$.
+\item Integrate out \emph{parameters}.
+\end{itemize}
+\item Inspection of the marginal likelihood shows ...
+
+\begin{itemize}
+\item The covariance matrix is a covariance function.
+\item We recognise it as the `linear kernel'.
+\end{itemize}
+\end{itemize}
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix,\mappingMatrix\right)=\prod_{i=1}^{n}N\left(\dataVector_{i,:}|\mappingMatrix\latentVector_{i,:},\dataStd^{2}\eye\right)\]
+\[
+p\left(\mappingMatrix\right)=\prod_{i=1}^{d}N\left(\mappingVector_{i,:}|\mathbf{0},\eye\right)\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{d}N\left(\dataVector_{:,j}|\mathbf{0},\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye\right)\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{d}N\left(\dataVector_{:,j}|\mathbf{0},\kernelMatrix\right)\]
+\[
+\kernelMatrix=\latentMatrix\latentMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+This is a product of Gaussian processes with linear kernels.\[
+\kernelMatrix=?\]
+Replace linear kernel with non-linear kernel for non-linear model.
+\par\end{center}
+
+\end{itemize}
+\subsection{Non-Linear Latent Variable Model}
+
+\textbf{RBF Kernel}
+\begin{itemize}
+\item The RBF kernel has the form $\kernelScalar_{i,j}=\kernelScalar\left(\latentVector_{i,:},\latentVector_{j,:}\right),$
+where
+
+
+\[
+\kernelScalar\left(\latentVector_{i,:},\latentVector_{j,:}\right)=\alpha\exp\left(-\frac{\left(\latentVector_{i,:}-\latentVector_{j,:}\right)^{\mathrm{T}}\left(\latentVector_{i,:}-\latentVector_{j,:}\right)}{2\rbfWidth^{2}}\right).\]
+
+
+\item No longer possible to optimise wrt $\latentMatrix$ via an eigenvalue
+problem.
+\item Instead find gradients with respect to $\latentMatrix,\alpha,\rbfWidth$
+and $\dataStd^{2}$ and optimise using gradient methods.
+\end{itemize}
+
+\subsection{Oil Data}
+
+
+%
+\begin{figure}
+\centering{}\includegraphics[width=0.8\textwidth]{../../../fgplvm/tex/diagrams/demOilFull}
+\end{figure}
+
+
+
+\textbf{Nearest Neighbour error in }$\latentMatrix$
+\begin{itemize}
+\item Nearest neighbour classification in latent space.
+
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+Method & PCA & GTM & GP-LVM\tabularnewline
+\hline
+Errors & 162 & 11 & 1 \tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+\emph{cf} 2 errors in data space.
+\par\end{center}
+
+\end{itemize}
+
+\subsection{Stick Man Data}
+
+\texttt{demStick1}
+
+%
+\begin{figure}
+\centering{}\includegraphics[width=0.5\textwidth]{../../../fgplvm/tex/diagrams/demStick1Connected}\caption{The latent space for the stick man motion capture data. }
+
+\end{figure}
+
+
+
+\section{Model Selection with the GP-LVM}
+\begin{itemize}
+\item Observed data have been sampled from low dimensional manifold 
+\item $\dataVector=f(\latentVector)$ 
+\item Idea: Model $f$ rank embedding according to 
+
+\begin{enumerate}
+\item Data fit of $f$ 
+\item Complexity of $f$ 
+\end{enumerate}
+\item How to model $f$? 
+
+\begin{enumerate}
+\item Making as few assumtpions about $f$ as possible? 
+\item Allowing $f$ from as {}``rich'' class as possible? 
+\end{enumerate}
+\end{itemize}
+Gaussian Processes
+\begin{itemize}
+\item Generalisation of Gaussian Distribution over \textbf{infinite} index
+sets 
+\item Can be used specify distributions over functions 
+\item Regression \begin{eqnarray*}
+\dataVector & = & f(\latentVector)+\boldsymbol{\epsilon}\\
+p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi}) & = & \int p(\dataMatrix|f,\latentMatrix,\boldsymbol{\Phi})p(f|\latentMatrix,\boldsymbol{\Phi})df\\
+p(f|\latentMatrix,\boldsymbol{\Phi}) & = & \mathcal{\numData}(\mathbf{0},\kernelMatrix)\\
+\hat{\boldsymbol{\Phi}} & = & \mathrm{argmax}{}_{\boldsymbol{\Phi}}p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi})\end{eqnarray*}
+ 
+\end{itemize}
+Gaussian Processes%
+\footnote{Images: N.D. Lawrence%
+}
+
+\begin{eqnarray*}
+\mathrm{log}~p(\dataMatrix|\latentMatrix) & = & \underbrace{-\frac{1}{2}\dataMatrix^{\mathrm{T}}(\kernelMatrix+\beta^{-1}\mathbf{I})^{-1}\dataMatrix}_{data-fit}-\\
+ &  & \underbrace{\frac{1}{2}\mathrm{log}~\mathrm{det}(\kernelMatrix+\beta^{-1}\mathbf{I})}_{complexity}-\frac{\numData}{2}\mathrm{log}~2\pi\end{eqnarray*}
+
+
+Gaussian Process Latent Variable Models
+\begin{itemize}
+\item GP-LVM models sampling process \begin{eqnarray*}
+\dataVector & = & f(\latentVector)+\boldsymbol{\epsilon}\\
+p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi}) & = & \int p(\dataMatrix|f,\latentMatrix,\boldsymbol{\Phi})p(f|\latentMatrix,\boldsymbol{\Phi})df\\
+p(f|\latentMatrix,\boldsymbol{\Phi}) & = & \mathcal{\numData}(\mathbf{0},\kernelMatrix)\\
+\left\{ \hat{\latentMatrix},\hat{\boldsymbol{\Phi}}\right\}  & = & \mathrm{argmax}_{\latentMatrix,\boldsymbol{\Phi}}p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi})\end{eqnarray*}
+ 
+\item Linear: Closed form solution 
+\item Non-Linear: Gradient based solution 
+\end{itemize}
+
+\section{Model Selection}
+\begin{itemize}
+\item \emph{Lawrence} - 2003 suggested the use of Spectral algorithms to
+initialise the latent space \textbf{Y} 
+\item \emph{Harmeling} - 2007 evaluated the use of GP-LVM objective for
+model selection 
+
+\begin{itemize}
+\item Comparisons between \textbf{Procrustes} score to ground truth and
+GP-LVM objective 
+\end{itemize}
+\end{itemize}
+Model Selection: Results%
+\footnote{Model selection results kindly provided by Carl Henrik Ek.%
+}
+
+%
+\begin{figure}
+
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_rank}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_rank_bar}}
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_rank_emb}}
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_hole}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_hole_rank}}
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_hole_rank_emb}}
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/swissroll5_rank}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/swissroll5_rank_bar}}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/swissroll5_rank_emb}}\caption{Use of GP-LVM likelihood to select different models.}
+
+\end{figure}
+
+
+
+\section{Summary}
+\begin{itemize}
+\item We introduced a dual probabilistic interpretation of PCA.
+\item It was straightforward to non-linearise it using Gaussian processes.
+\item Result is a non-linear probabilistic PCA.
+\item Optimise latent variables rather than integrate them out.
+\item Next: some examples of the model used in applications.
+\end{itemize}
+
+%}
+
+%%% Local Variables:
+%%% TeX-master: "book"
+%%% End:

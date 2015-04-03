@@ -1,0 +1,342 @@
+\chapter{Classical Scaling and Spectral Approaches}
+
+
+\fixme{Introduce isomap using the cities example to describe it ...}
+
+\section{High Dimensional Digits}
+
+\subsection{Motivation for Non-Linear Dimensionality Reduction}
+
+\textbf{USPS Data Set Handwritten Digit}
+\begin{itemize}
+\item 3648 Dimensions
+
+\begin{itemize}
+\item 64 rows by 57 columns
+
+\begin{itemize}
+\item Space contains more than just this digit.
+\item Even if we sample every nanosecond from now until the end of the universe,
+you won't see the original six!
+\end{itemize}
+\end{itemize}
+5cm
+
+\begin{center}
+%
+\begin{figure}
+
+
+\begin{centering}
+\subfigure[]{
+
+\includegraphics[width=0.49\textwidth]{../../../oxford/tex/diagrams/demSix0}}\subfigure[]{
+
+\includegraphics[width=0.49\textwidth]{../../../oxford/tex/diagrams/demSixSpace1}}\\\subfigure[]{
+
+\includegraphics[width=0.49\textwidth]{../../../oxford/tex/diagrams/demSixSpace2}}\subfigure[]{
+
+\includegraphics[width=0.49\textwidth]{../../../oxford/tex/diagrams/demSixSpace3}}
+\par\end{centering}
+
+\caption{Sampling from the high dimensional space in which the digit lives.}
+
+
+
+\end{figure}
+
+\par\end{center}
+
+\end{itemize}
+Simple Model of Digit
+
+Rotate a 'Prototype'
+
+%
+\begin{figure}
+\subfigure[]{
+
+\includegraphics[width=0.15\textwidth]{../../../oxford/tex/diagrams/demSix1}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.15\textwidth]{../../../oxford/tex/diagrams/demSix2}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.15\textwidth]{../../../oxford/tex/diagrams/demSix3}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.15\textwidth]{../../../oxford/tex/diagrams/demSix4}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.15\textwidth]{../../../oxford/tex/diagrams/demSix5}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.15\textwidth]{../../../oxford/tex/diagrams/demSix6}}
+
+\caption{Rotation of the digit to form a data set.}
+
+\end{figure}
+
+
+%
+\begin{figure}
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/demManifoldPrint1}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/demManifoldPrint2}}
+
+\texttt{\caption{\texttt{demDigitsManifold{[}1 2{]}, 'all') demDigitsManifold({[}1
+2{]}, 'sixnine'})}
+}
+\end{figure}
+
+\begin{itemize}
+\item In practice the data may undergo several distortions.
+
+\begin{itemize}
+\item \emph{e.g.} digits undergo 'thinning', translation and rotation.
+\end{itemize}
+\item For data with 'structure':
+
+\begin{itemize}
+\item we expect fewer distortions than dimensions;
+\item we therefore expect the data to live on a lower dimensional manifold.
+\end{itemize}
+\item Conclusion: deal with high dimensional data by looking for lower dimensional
+non-linear embedding.
+\end{itemize}
+
+\section{Kernel PCA}
+
+\subsection{Other Distance Similarity Measures}
+\begin{itemize}
+\item Can use similarity/distance of your choice.
+\item Beware though!
+
+\begin{itemize}
+\item The similarity must be positive semi definite for the distance to
+be Euclidean.
+\item Why? Can immediately see positive definite is sufficient from the
+{}``covariance intepretation''.
+\item For more details see \cite[Theorem 14.2.2]{Mardia:multivariate79}.
+\end{itemize}
+\end{itemize}
+A Class of Similarities for Vector Data
+\begin{itemize}
+\item All Mercer kernels are positive semi definite.
+\item Example, squared exponential (also known as RBF or Gaussian)\[
+\kernelScalar_{i,j}=\exp\left(-\frac{\left\Vert \dataVector_{i,:}-\dataVector_{j,:}\right\Vert ^{2}}{2l^{2}}\right).\]
+This leads to a kernel eigenvalue problem.
+\item This is known as Kernel PCA \cite{Scholkopf:nonlinear98}.
+\end{itemize}
+Implied Distance Matrix
+\begin{itemize}
+\item What is the equivalent distance $d_{i,j}$?\[
+d_{i,j}=\sqrt{k_{i,i}+k_{j,j}-2k_{i,j}}\]
+
+\item If point separation is large, $k_{i,j}\rightarrow0$. $k_{i,i}=1$
+and $k_{j,j}=1$.
+\end{itemize}
+\[
+d_{i,j}=\sqrt{2}\]
+
+\begin{itemize}
+\item Kernel with RBF kernel projects along axes PCA can produce poor results.
+\item Uses many dimensions to keep dissimilar objects a constant amount
+apart.
+\end{itemize}
+
+\subsection{Implied Distance for Kernel PCA}
+
+%
+\begin{figure}
+\begin{centering}
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/demSixKpcaCovariance}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/demSixKpca360}}
+\par\end{centering}
+
+\caption{(a) similarity matrix for RBF kernel on rotated sixes. (b) implied
+distance matrix for kernel on rotated sixes. Note that most of the
+distances are set to $\sqrt{2}\approx1.41$.}
+
+\end{figure}
+
+
+
+\section{Salt Taffy Effect ? Need to check what John was referring to!}
+
+%
+\begin{figure}
+\centering{}\includegraphics[width=0.55\textwidth]{../diagrams/demSixKpca567_0}\caption{\texttt{demSixKpca}. The fifth, sixth and seventh dimensions of the
+latent space for kernel PCA. Points spread out along axes so that
+dissimilar points are always $\sqrt{2}$ apart.}
+
+\end{figure}
+
+
+
+\section{Distances along the Manifold}
+
+Outline  
+
+
+\subsection{Data}
+
+Data
+
+%
+\begin{figure}
+\subfigure[\texttt{\small 'plane'}]{
+
+\includegraphics[width=0.32\textwidth]{../diagrams/planeData}} \subfigure[\texttt{\small 'swissroll'}]{
+
+\includegraphics[width=0.32\textwidth]{../diagrams/swissrollData}}\subfigure[\texttt{\small 'trefoil'}]{
+
+\includegraphics[width=0.32\textwidth]{../diagrams/trefoilData}}
+
+\caption{Illustrative data sets for the talk. Each data set is generated by
+calling \texttt{generateManifoldData(dataType)}. The \texttt{dataType}
+argument is given below each plot.}
+
+\end{figure}
+
+
+
+\section{Isomap}
+
+
+\begin{itemize}
+\item \emph{\cite{Tenenbaum:isomap00}}
+\item MDS finds geometric configuration preserving distances 
+\item MDS applied to Manifold distance 
+\item Geodesic Distance = Manifold Distance 
+\item Cannot compute geodesic distance without knowing manifold 
+\end{itemize}
+Isomap
+\begin{itemize}
+\item Isomap: define neighbors and compute distances between neighbours.
+\item Geodesic Distance approximated by shortest path through adjacency
+matrix. 
+\end{itemize}
+\includegraphics[width=10cm]{../diagrams/carl/isomap_geodesic}
+
+Isomap Examples%
+\footnote{Data generation Carl Henrik Ek%
+}%
+\begin{figure}
+
+
+\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/planeData}}\hfill{}
+
+\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/demIsomapPlane}}
+
+\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/swissrollData}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/demIsomapSwissroll}}
+
+\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/trefoilData}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/demIsomapTrefoil}}\caption{Figure}
+
+\end{figure}
+
+
+\texttt{demIsomap}
+
+\subsection{Isomap: Summary}
+\begin{itemize}
+\item MDS on shortest path approximation of manifold distance 
+\item [+] Simple 
+\item [+] Intrinsic dimension from eigen spectra 
+\item [-] Solves a very large eigenvalue problem 
+\item [-] Cannot handle holes or non-convex manifold 
+\item [-] Sensitive to {}``short circuit'' 
+\end{itemize}
+
+\section{Maximum Variance Unfolding \cite{Weinberger:learning04}.}
+\begin{itemize}
+\item Compute neighborhood, constrain local distances to be preserved.
+
+\begin{itemize}
+\item Maximise the variance in latent space.
+\end{itemize}
+\end{itemize}
+
+\chapter{Spectral Approaches and The Inverse Covariance}
+
+\begin{itemize}
+\item From the {}``covariance interpretation'' we think of the similarity
+matrix as a covariance.
+\item Each element of the covariance is a function of two data points.
+\item Another option is to specify the inverse covariance.
+
+
+If the inverse covariance between two points is zero. Those points
+are independent given all other points.
+\begin{itemize}
+\item This is a \emph{conditional independence}. 
+\item Describes how points are connected.
+\end{itemize}
+\item Laplacian Eigenmaps and LLE can both be seen as specifiying the inverse
+covariance.
+\end{itemize}
+LLE Examples
+
+%
+\footnote{7 neighbours used. No playing with settings.%
+}
+
+%
+\begin{figure}
+\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/planeData}}\hfill{}
+
+\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/demLlePlane}}
+
+\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/swissrollData}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/demLleSwissroll}}
+
+\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/trefoilData}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.5\textwidth]{../diagrams/demLleTrefoil}}\caption{Figure}
+
+\end{figure}
+
+
+\texttt{demLle}
+
+\section{Generative}
+\begin{itemize}
+\item Observed data have been sampled from manifold 
+\item Spectral methods start in the {}``wrong'' end 
+\item \textit{{}``It's a lot easier to make a mess than to clean it up!''} 
+
+\begin{itemize}
+\item Things break or disapear 
+\end{itemize}
+\item How to model observation {}``generation''? 
+\item Laplacian Eigenmaps \cite{Belkin:laplacian03}.
+
+\begin{itemize}
+\item Uses spectral graph theory and information geometric arguments to
+form embedding.
+\item Compute neighborhood, graph Laplacian and seek 2nd lowest eigenvector.
+\end{itemize}
+\end{itemize}
+
+

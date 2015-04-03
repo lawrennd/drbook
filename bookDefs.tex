@@ -1,0 +1,61 @@
+\RequirePackage[hyperpageref,english]{backref}
+\usepackage{subfigure}
+\usepackage{bookman}
+\usepackage{glossaries}
+\usepackage{natbib}
+\usepackage[%
+pdfstartview=FitH,%
+bookmarksopen=true,bookmarksopenlevel=0%
+plainpages=false,pdfpagelabels,%
+pagebackref=true,%
+hyperindex=true,
+pdftoolbar=false]{hyperref} 
+\hypersetup{pdfborder={0 0 0},   
+  colorlinks = false,
+  pdftitle={Dimensionality Reduction for Machine Learning},
+  pdfauthor={Neil D. Lawrence},
+  pdfsubject={machine learning, dimensionality reduction}}
+\usepackage{color}
+\usepackage{verbatim}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{esint}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{ae,aecompl}
+\usepackage{xmpmulti}
+\usepackage{bm}
+\usepackage{float}
+\floatstyle{ruled}
+\newfloat{boxfloat}{tbp}{boxf}[chapter]
+\newfloat{tipfloat}{tbp}{tipf}[chapter]
+\newfloat{intfloat}{tbp}{tipf}[chapter]
+\global\long\def\boxfontsize#1{\small}
+
+%\newenvironment{octave}{\begin{verbatim}}{\end{verbatim}}
+%\newenvironment{octave}[1][]{\begin{comment}}{\end{comment}}
+
+\renewcommand*{\backref}[1]{}
+\renewcommand*{\backrefalt}[4]{%
+  \ifcase #1 %
+    No citations.% use \relax if you do not want the "No citations" message
+    \or
+    Cited on p. #2.%
+    \else
+    Cited on pp. #2.%
+  \fi%
+}
+% Stop items breaking.
+\let\oldbibitem=\bibitem
+\renewcommand{\bibitem}{%
+\filbreak
+\oldbibitem
+}
+\setcounter{secnumdepth}{3} 
+\hyphenation{PASCAL}
+\global\long\def\book#1#2{#1}
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "book"
+%%% End: 

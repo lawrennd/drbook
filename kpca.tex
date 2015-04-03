@@ -1,0 +1,1096 @@
+%{
+\begin{matlab}
+  %}
+  % Comment/MATLAB set up code
+  importTool('dimred')
+  dimredToolboxes
+  randn('seed', 1e6)
+  rand('seed', 1e6)
+  if ~isoctave
+  colordef white
+  end
+  % Text width in cm.
+  textWidth = 10
+  %{
+  %   Start of Comment/MATLAB brackets
+\end{matlab}
+
+\chapter{Kernel PCA}
+\todo{Chris's connection paper on metric MDS and kernel PCA should be
+  discussed it may give further insight into why kernel PCA is
+  performing dimensionality expansion and on the relation between
+  classical MDS in a non-linear distance space and metric MDS in a
+  linear distance space}.
+
+In the last chapter we saw how classical multidimensional scaling can
+be applied to a data set consisting of distances or similarities. The
+classical scaling algorithm consists of three steps:
+\begin{enumerate}
+\item Square the distances in the inter point distance matrix to give
+  a matrix $\distanceMatrix$.
+\item Center the distance matrix by pre and postmultiplying by the
+  centering matrix. Set the matrix $\bMatrix$ to negative 1/2 of the
+  result. $\bMatrix = -\frac{1}{2}\centeringMatrix \distanceMatrix
+  \centeringMatrix $.
+\item Extract the principal $\latentDim$ eigenvectors from
+  $\bMatrix$. Use these (appropriately scaled) to form the latent
+  representation $\latentMatrix$.
+\end{enumerate}
+This algorithm gives the optimal linear dimensionality reduction of
+the data set under a criterion that measures the discrepancy in latent
+space interpoint distances with those in data space,
+\[
+\errorFunction(\latentMatrix) = \sum_{i=1}^\numData \sum_{j=1}^{i-1} \loneNorm{\frac{\latentDistanceScalar_{i,j}}{\latentDim} -\frac{\distanceScalar_{i,j}}{\dataDim}}
+\]
+where $\distanceScalar_{i,j}$ and $\latentDistanceScalar_{i,j}$ are
+the squared distances between data points $i$ and $j$ in data space
+and latent space respectively.
+
+A weakness with the algorithm is it only gives a linear mapping from
+the space where the distances are computed to the latent space. Thus
+if we compute squared Euclidean distances directly in the data space,
+$\distanceScalar_{i,j} = \ltwoNorm{\dataVector_{i,:}-\dataVector_{j,
+    :}}^2$, the algorithm provides a linear dimensionality reduction:
+indeed as we saw in the last chapter it is equivalent to principal
+component analysis and is often known as principal coordinate
+analysis.
+
+A natural approach to ensuring we can recover a $\latentMatrix$ which
+is nonlinearly related to $\dataMatrix$ is to compute squared
+distances in a space that is nonlinearly related to
+$\dataMatrix$. This can be achieved through the use of a set of basis
+functions.
+
+We will make regular use of basis functions for constructing nonlinear
+algorithms. A brief review of basis functions is given in
+\refbox{box:basisFunctions}.
+\begin{boxfloat}
+  \caption{Basis Functions}\label{box:basisFunctions}
+  A basis is a set of ``seed'' vectors which can be added together to
+  form a vector. A basis ``spans'' the set of vectors that it can
+  create. The usual basis for a 3-dimensional vector would be the set
+  of vectors $\basisVector_{1}=[1\quad 0\quad0]^\top$,
+  $\basisVector_{2}=[0\quad 1\quad0]^\top$ and
+  $\basisVector_{3}=[0\quad 0\quad 1]$. These three vectors can be
+  added together with different weights to form any 3-dimensional
+  vector we require. For example $[3\quad 4\quad 5]=4\basisVector_1 +
+  4\basisVector_2 + 5\basisVector_3$. The basis we have given allows
+  us to represent any 3 dimensional vector. This is known as its
+  vector space. The space that the basis vectors can represent is
+  known as the space that they span.
+
+  Sometimes a basis is chosen to be orthogonal, merely meaning that
+  each basis vector is at right angles to one another, so
+  $\basisVector_{i}^\top\basisVector_j=0$ for $i\neq j$. Each vector
+  can also be normalized to unit length giving
+  $\basisVector_i^\top\basisVector_i=1$. This then implies that the
+  matrix of basis vectors,
+  $\basisMatrix=[\basisVector_1\dots\basisVector_\dataDim]^\top$, is
+  an orthogonal matrix giving $\basisMatrix^\top\basisMatrix
+  =\eye$. The eigenvectors of a symmetric matrix, for example, have
+  this property. Indeed finding the eigenvectors of a covariance
+  matrix can be seen as finding the basis for which the data becomes
+  uncorrelated, although in the matrix of eigenvectors each basis
+  vector is a column, whereas we will typically place basis vectors
+  along rows of our basis matrices. A basis where each vector is
+  normalized and at right angles to the other vectors is known as
+  orthonormal.  A basis needn't be orthonormal, but any basis can be
+  represented by an orthonormal basis which spans the same
+  space. Note, confusingly, an orthogonal matrix is composed of basis
+  vectors that are \emph{orthonormal}, not just orthogonal.
+
+  % Orthonormal bases can be convenient though as they allow for
+  % quick inversion of the matrix
+  % $\left(\basisMatrix\basisMatrix^\top\right)^\top =
+  % \basisMatrix\basisMatrix^\top$. Inversions of this type are a common
+  % requirement in algorithms.
+
+  Basis functions are the functional equivalent of a basis. There is a
+  duality between a function and vectors: a vector can be seen as a
+  ``look up table'' representation of a function. The input to the
+  function is the required element of the vector and the output is the
+  value of that element. A one dimensional function can be thought of
+  as the continuous generalization of this system: for example if
+  $\mappingFunction(\latentScalar) = \latentScalar^2$ we can generate
+  a vector of length 3, $\mappingFunctionVector=[1\ 4\ 9]^\top$, from
+  the function. Given this duality between functions and vectors we
+  can think of basis functions as sets of functions that can be added
+  together to form a new function. So we might represent a function as
+  $\mappingFunction(\latentVector) =
+  \weightScalar_1\basisFunction_1(\latentVector) +
+  \weightScalar_2\basisFunction_2(\latentVector) +
+  \weightScalar_3\basisFunction_3(\latentVector)$.
+
+  \todo{what is spanning a function space --- the functions that the basis can represent??}
+
+  A common choice in machine learning for basis functions is an
+  exponentiated quadratic form,
+  \[
+  \basisFunction_i(\latentVector)=\exp\left(-\frac{1}{\lengthScale^2}\ltwoNorm{\latentVector - \locationVector_i}^2\right),
+  \]
+  which is variously known as the radial basis function, the Gaussian
+  basis. A widely used basis in signal processing is the Fourier basis
+  which uses sines and cosines. The weights in the Fourier space give a frequency based representation of the system.
+
+  Note that if we use only a finite number of basis functions we will
+  not span the space of all functions. For example the Fourier basis
+  would lead to periodic functions and the exponentiated square basis
+  leads to smooth functions with a lengthscale given by
+  $\lengthScale$. However, this is not necessarily a bad
+  characteristic. There may be certain functions we don't wish to
+  represent: ones that have unusual characteristics such as a large
+  number of discontinuities. Our choice of basis restricts the
+  functions we consider to those that our model spans. Prior knowledge
+  can often be very useful in informing this choice.
+\end{boxfloat}
+
+Rather than computing interpoint squared distances directly in the
+data space, we can first map them to a nonlinear space and compute the
+distance there. We consider $\numBasisFunc$ basis functions, for the
+sake of argument let's take them to be exponentiated quadratics with
+different location parameters. We can compute our basis functions as
+\[
+\basisFunction_j(\dataVector_{j, :}) =
+\exp\left(-\frac{1}{\lengthScale^2}\ltwoNorm{\dataVector_{j, :} -
+    \locationVector_{i}}^2\right)
+\]
+and by taking $\basisScalar_{i,j}=\basisFunction_{j}(\dataVector_{i,
+  :})$ we can form a set of basis we can convert them to a set of
+basis vectors, $\basisVector_{i,:}$, which we represent in a matrix as
+$\basisMatrix=[\basisVector_{1, :} \dots \basisVector_{\numData,
+  :}]^\top\in\Re^{\numData\times \numBasisFunc}$. We choose this form
+of representation to keep the basis matrix in the form of a design
+matrix: i.e. a form with rows equal to the number of data points,
+$\numData$.
+
+Just as the squared distance in the data space was given by
+$\distanceScalar_{i, j}=\ltwoNorm{\dataVector_{i, :} - \dataVector_{j,
+    :}}^2 = \dataVector_{i, :}^\top\dataVector_{i, :} -
+2\dataVector_{i, :}^\top\dataVector_{j, :} + \dataVector_{j, :}^\top
+\dataVector_{j, :}$, the squared distance in the space given by the
+basis functions can be computed as
+\[
+\distanceScalar_{i, j}=\ltwoNorm{\basisVector_{i, :} -
+  \basisVector_{j, :}}^2 = \basisVector_{i, :}^\top\basisVector_{i, :}
+- 2\basisVector_{i, :}^\top\basisVector_{j, :} + \basisVector_{j,
+  :}^\top \basisVector_{j, :}
+\]
+so we can compute a matrix of squared distances using
+\[
+\distanceMatrix = \diag{\basisMatrix\basisMatrix^\top}
+\onesVector^\top - 2\basisMatrix\basisMatrix^\top +
+\onesVector\diag{\basisMatrix\basisMatrix^\top}^\top.
+\]
+Classical scaling on this matrix leads us to compute the eigenvectors of 
+\[
+\bMatrix = -\half\centeringMatrix \basisMatrix\basisMatrix^\top \centeringMatrix.
+\]
+So we are actually dealing with a similarity matrix,
+$\basisMatrix\basisMatrix^\top$, which has been centered, $\bMatrix = \cbasisMatrix\cbasisMatrix^\top$.
+
+In the last chapter (\refsec{sec:eigenvalueEquivalence}) we already
+saw the equivalence between eigenvalue problems on matrices of the
+form $\cdataMatrix\cdataMatrix^\top$ and those on matrices such as
+$\cdataMatrix^\top\cdataMatrix$. In particular can show that if the
+eigenvalues of $\cdataMatrix^\top\cdataMatrix$ are $\eigenvalueMatrix$
+and the eigenvectors are $\rotationMatrix$ then the eigenvalues of
+$\cdataMatrix\cdataMatrix^\top$ are also $\eigenvalueMatrix$ with
+eigenvectors given by
+$\eigenvectorMatrix=\cdataMatrix\rotationMatrix\eigenvalueMatrix^{-\half}$. The
+same applies if we use the centered basis functions, $\cbasisMatrix$,
+instead of the centered data, $\cdataMatrix$.
+
+\section{A Further Intuition on Distances in Feature Space}
+
+Instead of computing distances in data space, $\dataMatrix$, we are
+now computing distances in a feature space, $\basisMatrix$. Such
+distances are nonlinearly related to the original data. Now we would
+like to develop further intuitions about these distances by
+considering them from the perspective of basis function based
+mappings.
+
+We can make use of a weighted set of basis functions to represent a
+function, as we saw in \refbox{box:basisFunctions},
+\[
+\mappingFunction(\dataVector_{i, :}) = \sum_{j=1}^\numBasisFunc \weightScalar_j \basisFunction_j (\dataVector_{i, :}),
+\]
+or using our basis vector notation we can write
+\[
+\mappingFunction(\dataVector_{i, :}) = \weightVector^\top \basisVector_{i, :} =\mappingFunction_i.
+\]
+To generate random functions, we introduce a probability density that
+governs the vector $p(\weightVector)$.  We can now ask the question,
+what would the expected squared distance be between two different
+function locations, $\mappingFunction(\dataVector_{i,
+  :})\equiv\mappingFunction_i$ and $\mappingFunction(\dataVector_{j,
+  :})\equiv\mappingFunction_j$. If we knew the value of
+$\weightVector$ this can be directly calculated,
+\[
+(\mappingFunction_i - \mappingFunction_j)^2 = (\basisVector_{i, :}^\top\weightVector - \basisVector_{j, :}^\top\weightVector)^2 
+\] 
+we can rewrite this as
+\[
+(\mappingFunction_i - \mappingFunction_j)^2 = (\basisVector_{i, :} - \basisVector_{j, :})^\top\weightVector\weightVector^\top(\basisVector_{i, :} - \basisVector_{j, :}).
+\]
+Taking the expectation under the sampling density for $\weightVector$
+then gives,
+\[
+\expSamp{(\mappingFunction_i - \mappingFunction_j)^2} =
+(\basisVector_{i, :} - \basisVector_{j,
+  :})^\top\expDist{\weightVector\weightVector^\top}{p(\weightVector)}(\basisVector_{i,
+  :} - \basisVector_{j, :}).
+\]
+We now see that if the second moment of $p(\weightVector)$ is given by
+the identity matrix,
+$\expDist{\weightVector\weightVector^\top}{p(\weightVector)}=\eye$
+then the expected squared distance between any two points on the
+function is given by
+\[
+\expSamp{(\mappingFunction_i - \mappingFunction_j)^2} = (\basisVector_{i, :} - \basisVector_{j, :})^\top(\basisVector_{i, :} - \basisVector_{j, :}).
+\]
+So we can see this squared distance in feature space arising from the
+expected distance between any two points on a random function that
+spans the given basis where the weights of the basis functions are
+sampled with zero mean,
+$\expDist{\weightVector}{p(\weightVector)}=\zerosVector$, and unit
+covariance, $\covSamp{\weightVector}=\eye$. In other words when
+generating random functions no individual basis function is being
+scaled larger (on average) than another and the scalings for each
+basis are independent.
+
+We considered the simple set of exponentiated quadratic basis
+functions shown in \reffig{fig:basisFunctions}.
+\begin{figure}
+  \begin{matlab}
+    %}
+    l = 1;
+    mu = [-1 0 1];
+    x = linspace(-2, 2, 100)';
+    D = dist2(x, mu');
+    phi = 1/(sqrt(pi)*l)*exp(-D/l^2);
+    figure(1), clf, hold on
+    h = [];
+    for i = 1:size(mu, 2)
+      h = [h plot(x, phi(:, i))];
+    end
+    set(h, 'linewidth', 2);
+    set(gca, 'xtick', [-2 -1 0 1 2]);
+    set(gca, 'ytick', [0 0.2 0.4 0.6]);
+    options = printLatexOptions;
+    options.height = 0.45*textWidth; options.maintainAspect = false;
+    printLatexPlot('basisFunctions', '../../../dimred/tex/diagrams', 0.9*textWidth, options);
+    %{
+  \end{matlab}
+  \begin{center}
+    \input{../../../dimred/tex/diagrams/basisFunctions}
+  \end{center}
+  \caption{A small set of exponentiated quadratic basis functions with
+    centers at $-1$, $0$, and $1$. The lengthscale of the basis
+    functions is given by $\lengthScale=1$.}\label{fig:basisFunctions}
+\end{figure}
+To illustrate how the expected squared distance is being computed
+between two points taken from the random functions we show a series of
+random functions in \reffig{fig:expectedSquareDistance} along with the
+distance between two points on those random functions.
+\begin{figure}
+  \begin{matlab}
+    %}
+    w = randn(3, 4);
+    l = 1;
+    mu = [-1 0 1];
+    x = linspace(-3, 3, 100)';
+    % Compute distance for basis functions
+    D = dist2(x, mu');
+    phi = 1/(sqrt(pi)*l)*exp(-D/l^2);
+    f = phi*w;
+    for k = 1:4
+      figure(1), clf, hold on
+      h = plot(x, f(:, k));
+      xlim = get(gca, 'xlim');
+      xspan = xlim(2) - xlim(1);
+      ylim = get(gca, 'ylim');
+      yspan = ylim(2) - ylim(1);
+      i = 20; j = 30;
+      indent = 0.22*xspan;
+      indent2 = 0.2*xspan;
+      indent3 = 0.21*xspan;
+      hold on
+      line(x(i), f(i, k), 'marker', 'o');
+      line([x(i), x(52)], [f(i, k), f(i, k)]);
+      text(x(i), f(i, k)-0.08*yspan, '$\mappingFunction_i$');
+      line([x(j), x(52)], [f(j, k), f(j, k)]);
+      line(x(j), f(j, k), 'marker', 'o');
+      text(x(j), f(j, k)-0.08*yspan, '$\mappingFunction_j$');
+      line([x(50), x(50)], [f(i, k) f(j, k)])
+      text(x(52), (f(i, k) + f(j, k))/2, '$\sqrt{(\mappingFunction_i - \mappingFunction_j)^2}$');
+      if k == 4
+        xlabel('$\dataScalar$')
+      end
+      ylabel('$\mappingFunction(\dataScalar)$')
+      set(gca, 'xtick', [-3 -2 -1 0 1 2 3]);
+      options = printLatexOptions;
+      options.height = 0.4*textWidth; options.maintainAspect = false;
+      set(h, 'linewidth', 2)
+      printLatexPlot(['basisFunctionDistance' num2str(k)], '../../../dimred/tex/diagrams', 0.9*textWidth, options);
+    end 
+    %{
+  \end{matlab}
+  \begin{center}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistance1}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistance2}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistance3}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistance4}
+  \end{center}
+  \caption{Distance between two points in the function
+    $\mappingFunction(\dataScalar)$. The mapping function is
+    constructed from three exponentiated quadratic basis functions
+    located at $-1$, $0$, and $1$. The width of the basis functions is
+    given by $\lengthScale=1$. A 3 dimensional vector,
+    $\weightVector$, is sampled from a Gaussian with zero mean and
+    unit covariance. This vector is used to weight the different basis
+    functions producing the random function shown. Random functions
+    and associated distances are shown for four different samples of
+    $\weightVector$.}\label{fig:expectedSquareDistance}
+\end{figure}
+
+\subsection{Number and Location of Basis}
+
+So far we have considered the use of a fixed number of basis
+functions. The use of exponentiated quadratic basis however highlights
+a problem with the approach. The use of the random function analogy to
+see how the distances are derived from the basis functions highlights
+a problem. In \reffig{fig:basisFunctionsWideInput} we show the basis
+set we have been using across a broader section of the input space.
+\begin{figure}
+  \begin{matlab}
+    %}
+    l = 1;
+    mu = [-1 0 1];
+    x = linspace(-4, 4, 100)';
+    D = dist2(x, mu');
+    phi = 1/(sqrt(pi)*l)*exp(-D/l^2);
+    figure(1), clf, hold on
+    h = [];
+    for i = 1:size(mu, 2)
+      h = [h plot(x, phi(:, i))];
+    end
+    set(gca, 'ytick', [0 0.2 0.4 0.6]);
+    set(gca, 'xtick', [-4 -3 -2 -1 0 1 2 3 4]);
+    set(h, 'linewidth', 2);
+    options = printLatexOptions;
+    options.height = 0.45*textWidth; options.maintainAspect = false;
+    printLatexPlot('basisFunctionsWideInput', '../../../dimred/tex/diagrams', 0.9*textWidth, options);
+    %{
+  \end{matlab}
+  \begin{center}
+    \input{../../../dimred/tex/diagrams/basisFunctionsWideInput}
+  \end{center}
+  \caption{The exponentiated quadratic basis functions with centers at
+    $-1$, $0$, and $1$. As we move away from the centers of the basis
+    functions they decay towards
+    zero.}\label{fig:basisFunctionsWideInput}
+\end{figure}
+We note that as we get more distance from the centers of the basis functions, their contribution all fades to zero.  This has a side effect on distances computed between points in these zones. In \reffig{fig:expectedSquareDistanceWideInput} we show distances between points on the randomly sampled functions where the input locations are in the regions not well covered by the basis functions.
+\begin{figure}
+  \begin{matlab}
+    %}
+    % Using same w as from before.
+    l = 1;
+    mu = [-1 0 1];
+    x = linspace(-4, 4, 100)';
+    % Compute distance for basis functions
+    D = dist2(x, mu');
+    phi = 1/(sqrt(pi)*l)*exp(-D/l^2);
+    f = phi*w;
+    for k = 1:4
+      figure(1), clf, hold on
+      h = plot(x, f(:, k));
+      xlim = get(gca, 'xlim');
+      xspan = xlim(2) - xlim(1);
+      ylim = get(gca, 'ylim');
+      yspan = ylim(2) - ylim(1);
+      i = 15; j = 85;
+      indent = 0.22*xspan;
+      indent2 = 0.2*xspan;
+      indent3 = 0.21*xspan;
+      hold on
+      set(h, 'linewidth', 2);
+      line([x(i), x(53)], [f(i, k), f(i, k)]);
+      line(x(i), f(i, k), 'marker', 'o');
+      text(x(i), f(i, k)-0.08*yspan, '$\mappingFunction_i$');
+      line([x(j), x(47)], [f(j, k), f(j, k)]);
+      line(x(j), f(j, k), 'marker', 'o');
+      text(x(j), f(j, k)-0.08*yspan, '$\mappingFunction_j$');
+      line([x(50), x(50)], [f(i, k) f(j, k)])
+      a = text(x(50), (f(i, k) + f(j, k))/2-0.1*yspan, '$\sqrt{(\mappingFunction_i - \mappingFunction_j)^2}$');
+      set(a, 'horizontalalignment', 'center')
+      if k == 4
+        xlabel('$\dataScalar$')
+      end
+      ylabel('$\mappingFunction(\dataScalar)$')
+      set(gca, 'xtick', [-4 -3 -2 -1 0 1 2 3 4]);
+      options = printLatexOptions;
+      options.height = 0.4*textWidth; options.maintainAspect = false;
+      printLatexPlot(['basisFunctionDistanceWideInput' num2str(k)], '../../../dimred/tex/diagrams', 0.9*textWidth, options);
+    end 
+    %{
+  \end{matlab}
+  \begin{center}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistanceWideInput1}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistanceWideInput2}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistanceWideInput3}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistanceWideInput4}
+  \end{center}
+  \caption{Distance between two points in the function
+    $\mappingFunction(\dataScalar)$. Now the locations are far apart
+    in $\dataScalar$. However, since they are both in regions where
+    the response from the basis set is small, the distance between the
+    points after mapping through the function,
+    $\mappingFunction(\dataScalar)$, is small.} \label{fig:expectedSquareDistanceWideInput}
+\end{figure}
+We see that the distances are very small, despite the differences
+between the $\dataScalar$ values being large. This is a side effect of
+bad basis function placement. However, there is an elegant solution
+for the exponentiated quadratic basis function that involves placing
+basis all across the $\dataScalar$ space. The approach leads to a
+particular class of basis function methods often known as kernel
+methods.
+
+\section{Kernel Methods for Basis Functions}
+
+We introduced basis functions as a way of nonlinearizing the
+relationship between our data points and the Euclidean distances we
+compute between those data points. However, a danger of this approach
+is that if the basis functions don't cover the entire data space then
+the distances computed in the feature space can be misleadingly small.
+
+One answer to this problem is to distribute the basis functions all
+across the data space. We will introduce this approach by considering
+a one dimensional data space, but it generalizes to high dimensional
+input spaces.
+% \todo{ Under this perspective we can also see that the covariance
+%   between two points from the function is given by
+% \[
+% \expSamp{\mappingFunction_i\mappingFunction_j} -\expSamp{\mappingFunction_i}\expSamp{\mappingFunction_j} = \basisVector_i^\top\basisVector_j
+% \]
+% }
+
+% \todo{Variance of the function interpoint distance function. Then use this to de% monstrate that looking at the mean alone is not sufficient to describe the system.}
+% Func,  have
+% This is done in the following manner. First we compute a Given a set of basis functions the squared distance 
+% Classical multidimensional scaling provides an approach to summarizing a data set with a reduced dimensional representation. If the dimensionality reduction is linear then under an error measure based on absolute values of the differences between the squared distance matrix, the solution for CMDS is given by an eigenvalue problem. However, we motivated the approach by considering a dataset consisting of rotated sixes that highlighted the fact that we should be considering nonlinear approaches to modeling data. In this chapter we introduce kernel principal components analysis: a non-linear approach to modeling data. It uses a clever trick to get around the linear constraints imposed by classical multidimensional scaling to provide a non-linear algorithm. 
+
+% Classical multidimensional scaling finds the optimal linear transformation of a data set $\dataMatrix$ to a reduced space $\latentMatrix$ where we are provided with a matrix of interpoint distances between each data point from $\dataMatrix$. If the distances themselves are computed in a nonlinear space
+% \[
+% \exp(-\frac{1}{\lengthScale^2}\distanceScalar_{i,j}) \approx 
+% \]
+% Under the standard error measure of the absolute So far all the models we have focussed on  proscribed
+% a linear relationship between the latent variables and the data. However, in the sixes example we considered in the last chapter it was clear that the dimensionality reduction was nonlinear in nature. In general we expect nonlinear distortions from the latent space to the data space to be the typical result. 
+
+
+% These models all proscribed
+% a linear relationship between the latent variables and the data. We
+% will consider a small artificial example that shows how the linear
+% relationship can be easily violated. Such violations will be common in
+% real data, this motivates the need for a framework for nonlinear
+% dimensionality reduction.
+
+% We
+% will consider a small artificial example that shows how the linear
+% relationship can be easily violated. Such violations will be common in
+% real data, this motivates the need for a framework for nonlinear
+% dimensionality reduction.
+
+% Introduce kernel PCA as a potentially attractive way to non-linearize the MDS framework --- then use it to show (by converting to the conditionally positive definite kernel) that the expected distances are crap and it doesn't work for dimensionality reduction --- nevertheless big it up for feature generation. 
+
+
+
+
+% pre-image problem in kernel PCA Are Bernhard's iterative updates related to SNE?
+
+% \begin{boxfloat}
+% \caption{Generalized Linear Models}\label{box:generalizedLinear}
+
+% We've seen how distance matrices can be computed in a feature
+% space. Now we introduce the perspective of a generalized linear model
+% for computing these distances. A generalized linear
+% model can be seen as constructing a function through a weighted sum of
+% nonlinearities. Formally, we assume that a function, $f(t)$ can be
+% represented as
+% \[
+% f(t) = \sum_{k=1}^\numBasisFunc \weightScalar_k\basisFunc_k(t),
+% \]
+% where the basis function has a nonlinear form. One possibility is a basis derived from a Gaussian form,
+% \begin{equation}
+%   \basisFunc_k(t) = \frac{1}{\sqrt{\pi\lengthScale_k^2}}\exp\left(-\frac{(t-\tau_k)^2}{\lengthScale{}_k^2}\right). \label{eq:eqBasis}
+% \end{equation}
+% Here $\tau_k$ represents a location parameter which gives the center
+% of the basis function and $\lengthScale$ represents a timescale
+% parameter which gives the width of the basis function (or the
+% timescale over which it is active). As the distance between $t$ and
+% $\tau_k$ increases the basis function approaches zero. This is
+% therefore sometimes described as a ``local'' basis function. In
+% \reffig{fig:basisFunctions} we show a set of bases and some nonlinear
+% functions that can be derived from them using different weights.
+% \begin{figure}
+%   \begin{center}
+%     \subfigure[Set of three basis functions.]{
+%       \input{../../../dimred/tex/diagrams/basisFunctions}}
+%     \subfigure[Linear combination of basis with $\weightScalar_1=0.875$, $\weightScalar_2=-0.388$, and $\weightScalar_3=-2.01$.]{
+%       \includegraphics[width=0.6\textwidth]{../../../gpsim/tex/diagrams/demBasisSample1}}
+%     \subfigure[Linear combination of basis with $\weightScalar_1=-0.359$, $\weightScalar_2=1.23$, and $\weightScalar_3=-0.328$.]{
+%       \includegraphics[width=0.6\textwidth]{../../../gpsim/tex/diagrams/demBasisSample2}}
+%     \subfigure[Linear combination of basis with $\weightScalar_1=-1.56$, $\weightScalar_2=-0.74$, and $\weightScalar_3=1.69$.]{
+%       \includegraphics[width=0.6\textwidth]{../../../gpsim/tex/diagrams/demBasisSample3}}
+%   \end{center}
+
+%   \caption{Some functions based on a simple basis set with three
+%     members. Location parameters of the basis functions are set to
+%     $\locationScalar_k = -1, 0, 1$ and the length scale of the bases is set to
+%     1. Functions derived from these bases are shown for different
+%     weights. Each weight was sampled from a standard normal
+%     density.}\label{fig:basisFunctions}
+% \end{figure}
+% \end{boxfloat}
+% \begin{boxfloat}
+%   \caption{Fitting Basis Function Models}\label{box:fittingBasis}
+
+%   Given a basis set, $\left\{\phi_k(t)\right\}_{k=1}^\numBasisFunc$, a set of weights, $\left\{\weightScalar_k\right\}_{k=1}^\numBasisFunc$, and we can determine all these parameters of the model (including the parameters of the basis functions) by fitting through maximum likelihood. If we assume Gaussian noise of variance $\dataStd^2$ we can compute the log likelihood of an observed data set of mRNA concentrations, perhaps obtained from gene expression microarray,
+%   \[
+%   \log p(\dataMatrix|\weightVector) = -\frac{\dataDim}{2}\log 2\pi\dataStd^2 -\frac{1}{2\dataStd^2}\sum_{j=1}^\dataDim \sum_{i=1}^\numData(\mappingFunction(t_i) - y_{i,j})^2
+%   \]
+%   where the data has been collected at times
+%   $\left\{t_i\right\}$ and has values given by $\left\{y_{i,j}\right\}$
+%   for the $j$th gene. We have used the notation
+%   $\mrnaConcentration_j(t_i)$ to denote the value of the predicted mRNA
+%   concentration for the $j$th gene at the $i$th time point. Bearing in
+%   mind that this is dependent on the parameters of the $j$th
+%   differential equation and the basis functions, we can maximize this
+%   log likelihood with respect to all these parameters and the noise
+%   variance. Here, in our representation of the likelihood $p(\dataMatrix|\weightVector)$, we have only made explicit the conditioning on the vector of weights,  $\weightVector=\left[\weightScalar_1,\dots,\weightScalar_\numBasisFunc\right]^\top$, as we will mainly focus on maximization with respect to this vector. With such a probabilistic formulation we can also exploit
+%   the PUMA \citep{Milo:probabilistic03,Liu:tractable04} framework for
+%   propagating uncertainty through microarray analysis and associate an
+%   individual variance $\dataStd_{i,j}$ with each gene expression
+%   observation, $y_{i,j}$. 
+
+%   Working with the convolved basis set we have
+%   \[
+%   \phi^\prime_{j,k}(t) = \sensitivity_je^{-\decayRate_{j}t}\int_0^t
+%   e^{\decayRate_{j}u} \basisFunc_k(u) \text{d}u.
+%   \]
+%   We can then write a particular mRNA concentration as
+%   \[
+%   \mrnaConcentration_j(t) = a_ie^{-\decayRate_j t} + \frac{\basalRate_j}{\decayRate_j} + \weightVector^\top \basisVector^\prime_{j}(t)
+%   \]
+%   where $\weightVector$ is a vector of the values
+%   $\{\weightScalar_k\}_{k=1}^\numBasisFunc$ and
+%   $\basisVector^\prime(t)$ is a vector valued function representing
+%   the values of the basis functions
+%   $\left\{\basisFunc^\prime_{j,k}(t)\right\}_{k=1}^\numBasisFunc$. Ignoring the basal rate and $a_i$ for the moment, we can write the log likelihood as
+%   \begin{align*}
+%     p(\dataMatrix|\weightVector) =& -\frac{\dataDim}{2}\log 2\pi\dataStd^2\\
+%     & -\frac{1}{2\dataStd^2}\left(-\weightVector^\top\sum_{j=1}^\dataDim \sum_{i=1}^\numData\basisVector^\prime_j(t_i)\basisVector^\prime_j(t_i)^\top\weightVector
+%       +2\sum_{j=1}^\dataDim \sum_{i=1}^\numData\weightVector^\top\basisVector^\prime_j(t_i)y_{i,j} + y_{i,j}^2\right)
+%   \end{align*}
+%   which can be maximized with respect to $\weightVector$ by finding a stationary point of the log likelihood,
+%   \[
+%   \weightVector = \left[\sum_{j=1}^\dataDim \sum_{i=1}^\numData\basisVector^\prime_j(t_i)\basisVector^\prime_j(t_i)^\top\right]^{-1}\sum_{j=1}^\dataDim \sum_{i=1}^\numData\basisVector^\prime_j(t_i)y_{i,j}.
+%   \]
+% \end{boxfloat}
+% If we require a lot of flexibility for our model of the TF
+% concentration, $\mappingFunction(t)$, we can use a large number of
+% basis functions, $\numBasisFunc$. However, as we increase the number
+% of basis functions we may find that we are no longer able to compute
+% the maximum likelihood solution for $\weightVector$. If
+% $\numBasisFunc>\numData\dataDim$ then the matrix given by
+% $\sum_{j=1}^\dataDim
+% \sum_{i=1}^\numData\basisVector^\prime_j(t_i)\basisVector^\prime_j(t_i)^\top$
+% will not be invertible. A solution to this problem is to handle
+% $\weightVector$ through Bayesian inference (see
+% \citet{Lawrence:licsbbayes10} for a brief introduction). In Bayesian
+% inference, parameters are treated with a prior distribution, in this
+% case $p(\weightVector)$ and rather than being maximized, they are
+% integrated out:
+% \[
+% p(\dataMatrix) =\int p(\dataMatrix|\weightVector)p(\weightVector)\text{d}\weightVector.
+% \]
+% % a posterior distribution for the weights can the be computed as
+% % \[
+% % p(\weightVector|\dataMatrix) = \frac{p(\dataMatrix|\weightVector)p(\weightVector)}{p(\dataMatrix)}
+% % \]
+% % this is known as Bayes' rule.
+% If we place a zero mean Gaussian prior density over $\weightVector$,
+% \[
+% p(\weightVector)=\frac{1}{\sqrt{2\pi}\det{\covarianceMatrix}^{\frac{1}{2}}}\exp\left(-\frac{1}{2}\weightVector^\top \covarianceMatrix^{-1}\weightVector\right)
+% \]
+% we can compute the marginal likelihood of the data analytically, it is
+% given by
+% \[
+% p(\dataMatrix) = \frac{1}{\sqrt{2\pi}\det{\kernelMatrix + \dataStd^2\eye}^\frac{1}{2}}\exp\left(-\frac{1}{2}\dataVector^\top \left(\kernelMatrix + \dataStd^2\eye\right)^{-1}\dataVector\right),
+% \]
+% where $\dataVector$ is a ``stacked'' version of the data matrix,
+% i.e. it is composed of the columns from $\dataMatrix$ stacked on top
+% of one another. The matrix $\kernelMatrix$ gives the covariance
+% between the different mRNA concentrations at different times. It is
+% structured as a block matrix with $\dataDim\times\dataDim$ blocks,
+% each block of size $\numData\times\numData$. The diagonal blocks give
+% covariances of a single gene output, while off diagonal blocks give
+% \emph{cross covariances} between different outputs. In general we can define
+% each element of $\kernelMatrix$ to be $\kernelScalar_{i,j}(t, t^\prime) =
+% \basisVector^\prime_i(t)^\top\covarianceMatrix\basisVector^\prime_j(t')$. This
+% denotes the covariance between the $i$ and $j$th mRNA concentrations
+% computed between times $t$ and $t^\prime$. We can depict the structure
+% of this covariance function using a color map to represent the
+% function values. This is shown in \reffig{fig:covarianceStructure}.
+% \begin{figure}
+
+%   \caption{Structure of $\kernelMatrix$ from the marginal likelihood's
+%     covariance matrix.}\label{fig:covarianceStructure}
+% \end{figure}
+
+% \subsubsection{Relationship with Basis of $\mappingFunction(\dataScalar)$}
+
+% The model as we described is dependent on our choice of basis function
+% for $\mappingFunction(\dataScalar)$. An interesting feature is that we can
+% represent all the elements of the marginal's covariance matrix through
+% the inner product of the basis, $\kernelScalar(\dataScalar,
+% \dataScalar^\prime)=\basisVector(\dataScalar)^\top\covarianceMatrix\basisVector(\dataScalar^\prime)$:
+% % \[
+% % \kernelScalar_{i,j}(\dataScalar,\dataScalar^\prime) = \sensitivity_j\sensitivity_i e^{-\decayRate_{i}\dataScalar-\decayRate_{j}\dataScalar^\prime}\int_0^\dataScalar
+% % e^{\decayRate_{i}u} \int_0^{\dataScalar^\prime} e^{\decayRate_{j}u^\prime}\underbrace{\basisVector(u)^\top \covarianceMatrix \basisVector(u^\prime)}_{\kernelScalar(u, u^\prime)}\text{d}u^\prime \text{d}u. \label{eq:convolution}
+% % \]
+% In fact this equation holds in general: as long as $k(\dataScalar,
+% \dataScalar^\prime)$ is a positive definite function, it represents an inner
+% product of a basis set. If we consider a spherical prior for
+% $\weightVector$, so $\covarianceMatrix=\gamma\eye$, then we can write
+% $\kernelScalar(\dataScalar,\dataScalar^\prime) = \gamma
+% \basisVector(\dataScalar)^\top\basisVector(\dataScalar^\prime)$. Now, instead of maximizing
+% over all different weight parameters, $\weightVector$, we only need to
+% find $\gamma$. Through marginalization we have reduced the number of
+% parameters in the system by $\numBasisFunc-1$. A problem remains
+% though, each basis function has a center, $\tau_k$, and these
+% locations represent an additional $\numBasisFunc$ parameters that also
+% need to be determined. We now show how these parameters can also be
+% eliminated. Simultaneously we will consider a limit that allows us to effective take the number of basis functions, $\numBasisFunc\rightarrow\infty$.
+
+\subsection{An Infinite Basis}
+
+One design question is how to choose the number of basis functions,
+$\numBasisFunc$, and the location of these basis functions,
+$\left\{\basisLocation_k\right\}_{k=1}^\numBasisFunc$. First we will
+explore what happens when we place the basis functions at uniform
+intervals between two values, $a$ and $b$, over a one dimensional
+space so we have functions of the form
+\[
+\mappingFunction(\dataScalar) = \sum_{k=1}^\numBasisFunc
+\weightScalar_k \exp\left(-\frac{(\dataScalar-a -k\Delta\basisLocation
+    )^2}{\lengthScale{}^2}\right),
+\]
+where we have set the location parameter of each
+$\basisFunc_k(\dataScalar)$ to
+\[
+\basisLocation_k = a+k\Delta\basisLocation.
+\]
+The distances in feature space are entirely dependent on the inner
+product between basis vectors at the different locations, which we
+write
+% \[
+% \kernelScalar\left(\dataScalar,\dataScalar^\prime\right) = \frac{\gamma}{2\pi\lengthScale{}^2}\sum_{k=1}^{\numBasisFunc} \exp\left(
+%   -\frac{\dataScalar^2 + \left.\dataScalar^\prime\right.^2 - 2\basisLocation_k \left(\dataScalar+\dataScalar^\prime\right) +
+%     2\basisLocation_k^2}{2\lengthScale{}^2} \right),
+% \]
+% we can specify the bases in terms of their indices,
+\[
+\basisFunction_k(\dataScalar)\basisFunction_k(\dataScalar^\prime) =
+\exp\left( -\frac{\dataScalar^2 + \left.\dataScalar^\prime\right.^2 -
+    2\left(a+\Delta\basisLocation\cdot k\right)
+    \left(\dataScalar+\dataScalar^\prime\right) +
+    2\left(a+\Delta\basisLocation \cdot k\right)^2}{ \lengthScale{}^2}
+\right).
+\]
+More basis functions allow greater flexibility in our model of the
+mapping function. We can increase the number of basis functions we use
+in the interval between $a$ and $b$ by decreasing the interval
+$\Delta\basisLocation$. However, to do this without increasing the
+expected variance of the resulting TF concentration we need to scale
+down the variance of the prior distribution for $\weightVector$. This
+can be done by setting the variance parameter to be proportional to
+the interval, so we take $\gamma = \alpha\Delta\basisLocation$. Now we
+have basis functions where the location of the leftmost basis
+function, $k=1$, is $\basisLocation_1=a+\Delta\basisLocation$ and the
+rightmost basis is $\basisLocation_\numBasisFunc=b$ so that $b= a+
+\Delta\basisLocation\cdot\numBasisFunc$. The fixed interval distance
+between $a$ and $b$ is therefore given by $b-a=(\numBasisFunc-1)\Delta
+\basisLocation$.
+
+We are going to increase the number of basis functions by taking the
+limit as $\Delta \basisLocation\rightarrow 0$. This will take us from
+a discrete system to a continuous system. In this limit the number of
+basis functions becomes infinite because we have $\numBasisFunc
+=\lim_{\Delta \basisLocation \rightarrow 0} \frac{b-a}{\Delta
+  \basisLocation} + 1$. In other words we are moving from a fixed
+number of basis functions to infinite basis functions. The inner
+product between the basis functions becomes
+\[
+\kernelScalar\left(\dataScalar,\dataScalar^\prime\right) =
+\frac{\alpha}{\pi \lengthScale^2}\int_a^b \exp\left(
+  -\frac{\dataScalar^2 + \left.\dataScalar^\prime\right.^2 -
+    2\basisLocation \left(\dataScalar+\dataScalar^\prime\right) +
+    2\basisLocation^2}{\lengthScale{}^2}
+\right)\text{d}\basisLocation,
+\]
+where we have used $\basisLocation =
+a+\Delta\basisLocation$. Completing the square gives
+\[
+\kernelScalar\left(\dataScalar,\dataScalar^\prime\right) =
+\frac{\alpha}{\pi \lengthScale^2} \int_a^b \exp\left(
+  -\frac{\dataScalar^2 + \left.\dataScalar^\prime\right.^2 +
+    2\left(\basisLocation - \frac{1}{2}\left(\dataScalar +
+        \dataScalar^\prime\right)\right)^2
+    -\frac{1}{2}\left(\dataScalar +
+      \dataScalar^\prime\right)^2}{\lengthScale{}^2}
+\right)\text{d}\basisLocation
+\]
+which we rewrite in the form 
+\[
+\kernelScalar\left(\dataScalar,\dataScalar^\prime\right) =
+\frac{\alpha}{\sqrt{2\pi\lengthScale{}^2}} \exp\left(
+  -\frac{(\dataScalar-\dataScalar^\prime)^2}{2\lengthScale{}^2}\right)
+\sqrt{\frac{2}{\pi \lengthScale{}^2}}\int_a^b
+\exp\left(-\frac{2}{\lengthScale^2}\left(\basisLocation -
+    \frac{\dataScalar + \dataScalar^\prime}{2}\right)^2
+\right)\text{d}\basisLocation,
+\]
+allowing us to integrate over $\basisLocation$ to give
+\[
+\kernelScalar\left(\dataScalar,\dataScalar^\prime\right) =
+\frac{\alpha}{\sqrt{2\pi\lengthScale{}^2}} \exp\left(
+  -\frac{(\dataScalar-\dataScalar^\prime)^2}{2\lengthScale{}^2}\right)
+\frac{1}{2}\left[1+\text{erf}\left(\sqrt{\frac{2}{\lengthScale^2}}\left(\basisLocation
+      - \frac{\dataScalar + \dataScalar^\prime}{2}\right)
+  \right)\right]_a^b,
+\]
+which can be rewritten as 
+\[
+\kernelScalar\left(\dataScalar,\dataScalar^\prime\right) =
+\frac{\alpha}{\sqrt{2\pi\lengthScale{}^2}} \exp\left(
+  -\frac{\left(\dataScalar-\dataScalar^\prime\right)^2}{2\lengthScale{}^2}\right)
+\frac{1}{2}\left[\text{erf}\left(\sqrt{\frac{2}{\lengthScale^2}}\left(b
+      - \frac{\dataScalar + \dataScalar^\prime}{2}\right) \right) -
+  \text{erf}\left(\sqrt{\frac{2}{\lengthScale^2}}\left(a -
+      \frac{\dataScalar + \dataScalar^\prime}{2}\right)
+  \right)\right].
+\]
+Finally, we wish to spread our basis functions across the entire real
+line so there are no zones where they are inactive. This can be done
+by taking the limit where the boundaries of the locations head towards
+infinity, so we take the limit as $a\rightarrow -\infty$ and
+$b\rightarrow \infty$. This gives a model where we have infinite basis
+functions distributed across the entire real line. In this case the
+term inside the square brackets becomes two, leaving only the
+exponentiated quadratic term
+\[
+\kernelScalar\left(\dataScalar,\dataScalar^\prime\right) =
+\frac{\alpha}{\sqrt{2\pi\lengthScale^2}}\exp\left(
+  -\frac{\left(\dataScalar-\dataScalar^\prime\right)^2}{2\lengthScale{}^2}\right).
+\]
+
+This analysis above shows that if we take a one dimensional fixed
+basis function model, we can increase the number of basis functions to
+infinity and distribute them evenly across the real line. We no longer
+have to specify the number or location of individual basis functions
+and there will no longer be zones where basis functions are zero.
+Note that we can no longer compute the basis,
+$\basisVector(\dataScalar)$, explicitly as it is infinite dimensional,
+however inner products of the basis can be computed, we have
+$\basisVector(\dataScalar)^\top \basisVector(\dataScalar^\prime) =
+\kernelScalar(\dataScalar, \dataScalar^\prime) =
+\exp\left(-\frac{(\dataScalar-\dataScalar^\prime)^2}{2\lengthScale^2}\right)$.
+
+This procedure for moving from inner products,
+$\basisVector(\dataScalar)^\top\basisVector(\dataScalar^\prime)$, to
+covariance functions, $\kernelScalar(\dataScalar,
+\dataScalar^\prime)$, is sometimes known as kernelization
+\cite{Scholkopf:learning01} due to the fact that
+$\kernelScalar(\dataScalar, \dataScalar^\prime)$ has the properties of
+a Mercer kernel. Specifically if a symmetric matrix of values of
+$\kernelScalar(\dataScalar, \dataScalar^\prime)$ is computed for a
+vector of times $\mathbf{\dataScalar}$ it should always be positive
+semi-definite. In other words if $\kernelScalar_{i,j} =
+\kernelScalar(\dataScalar_i, \dataScalar_j)$ is the element from the
+$i$th row and $j$th column of $\kernelMatrix$ and $\dataScalar_i$ is
+the $i$th element from $\mathbf{\dataScalar}$, we should have that
+$\kernelMatrix$ is a positive definite matrix for any vector of inputs
+$\mathbf{\dataScalar}$. This same property allows
+$\kernelScalar(\dataScalar, \dataScalar^\prime)$ to be used as a
+\emph{covariance function}: a function that can generate a covariance
+matrix. Covariances must be positive definite: the matrix
+$\kernelMatrix$ specifies the covariance between instantiations of the
+function $\mappingFunction(\dataScalar)$ at the times given by
+$\mathbf{\dataScalar}$. Mercer's theorem says that underlying all such
+positive definite functions there is always a (possibly infinite)
+feature space, $\basisFunc(\dataScalar)$, which can be used to
+construct the covariance function. For our example the relationship
+between the feature space and this covariance function emerges
+naturally through considering a Bayesian approach to a fixed basis
+function model. The resulting model is known as a Gaussian process
+\citep{Ohagan:curve78,Williams:Gaussian95,Rasmussen:book06} (see
+\refchap{chap:gp}).
+
+We can sample random functions as before. 
+\begin{figure}
+  \begin{matlab}
+    %}
+    % Using same w as from before.
+    l = 1;
+    x = linspace(-4, 4, 100)';
+    % Compute distance for basis functions
+    D = dist2(x, x);
+    K = 1/(2*sqrt(pi)*l)*exp(-D/(2*l^2))+eye(100)*1e-6;
+    f = gsamp(zeros(size(x)), K, 4)';
+    for k = 1:4
+      figure(1), clf, hold on
+      h = plot(x, f(:, k));
+      set(h, 'linewidth', 2);
+      xlim = get(gca, 'xlim');
+      xspan = xlim(2) - xlim(1);
+      ylim = get(gca, 'ylim');
+      yspan = ylim(2) - ylim(1);
+      i = 15; j = 85;
+      indent = 0.22*xspan;
+      indent2 = 0.2*xspan;
+      indent3 = 0.21*xspan;
+      hold on
+      line([x(i), x(53)], [f(i, k), f(i, k)]);
+      line(x(i), f(i, k), 'marker', 'o');
+      text(x(i), f(i, k)-0.08*yspan, '$\mappingFunction_i$');
+      line([x(j), x(47)], [f(j, k), f(j, k)]);
+      line(x(j), f(j, k), 'marker', 'o');
+      text(x(j), f(j, k)-0.08*yspan, '$\mappingFunction_j$');
+      line([x(50), x(50)], [f(i, k) f(j, k)])
+      a = text(x(50), (f(i, k) + f(j, k))/2-0.1*yspan, '$\sqrt{(\mappingFunction_i - \mappingFunction_j)^2}$');
+      set(a, 'horizontalalignment', 'center')
+      if k == 4
+        xlabel('$\dataScalar$')
+      end
+      ylabel('$\mappingFunction(\dataScalar)$')
+      set(gca, 'xtick', [-4 -3 -2 -1 0 1 2 3 4]);
+      options = printLatexOptions;
+      options.height = 0.4*textWidth; options.maintainAspect = false;
+      printLatexPlot(['basisFunctionDistanceInfinite' num2str(k)], '../../../dimred/tex/diagrams', 0.9*textWidth, options);
+    end 
+    %{
+  \end{matlab}
+  \begin{center}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistanceInfinite1}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistanceInfinite2}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistanceInfinite3}
+    \input{../../../dimred/tex/diagrams/basisFunctionDistanceInfinite4}
+  \end{center}
+  \caption{Distance between two points in the function
+    $\mappingFunction(\dataScalar)$. The locations are again far apart
+    in $\dataScalar$ but now we are using an infinite basis set so the
+    distance between the two points in feature space is
+    large.} \label{fig:expectedSquareDistanceInfinite}
+\end{figure}
+% \section{High Dimensional Digits}
+
+% \subsection{Other Distance Similarity Measures}
+% \begin{itemize}
+% \item Can use similarity/distance of your choice.
+% \item Beware though!
+  
+%   \begin{itemize}
+%   \item The similarity must be positive semi definite for the distance to
+%     be Euclidean.
+%   \item Why? Can immediately see positive definite is sufficient from the
+%     {}``covariance intepretation''.
+%   \item For more details see \cite[Theorem 14.2.2]{Mardia:multivariate79}.
+%   \end{itemize}
+% \end{itemize}
+% A Class of Similarities for Vector Data
+% \begin{itemize}
+% \item All Mercer kernels are positive semi definite.
+% \item Example, squared exponential (also known as RBF or Gaussian)\[
+%   \kernelScalar_{i,j}=\exp\left(-\frac{\ltwoNorm{\dataVector_{i,:}-\dataVector_{j,:}}^{2}}{2\lengthScale^{2}}\right).\]
+%   This leads to a kernel eigenvalue problem.
+% \item This is known as Kernel PCA \cite{Scholkopf:nonlinear98}.
+% \end{itemize}
+% Implied Distance Matrix
+% \begin{itemize}
+% \item What is the equivalent distance $d_{i,j}$?\[
+%   d_{i,j}=\sqrt{k_{i,i}+k_{j,j}-2k_{i,j}}\]
+
+% \item If point separation is large, $k_{i,j}\rightarrow0$. $k_{i,i}=1$
+%   and $k_{j,j}=1$.
+% \end{itemize}
+% \[
+% d_{i,j}=\sqrt{2}\]
+
+% \begin{itemize}
+% \item Kernel with RBF kernel projects along axes PCA can produce poor results.
+% \item Uses many dimensions to keep dissimilar objects a constant amount
+%   apart.
+% \end{itemize}
+
+% \subsection{Implied Distance for Kernel PCA}
+
+ 
+\begin{figure}
+  \begin{matlab}
+    %}
+    options.noiseAmplitude = 0;
+    options.subtractMean = false;
+    Y = generateManifoldData('six', options);
+    kern = kernCreate(Y, 'rbf');
+    kern.inverseWidth=7e-7;
+    K = kernCompute(kern, Y);
+    H = centeringMatrix(size(K, 1));
+    [U, Lambda] = eig(H*K*H);
+
+    [lambda, order] = sort(diag(Lambda), 'descend');
+    U = U(:, order);
+    X = real(U*diag(sqrt(lambda)));
+    for q = [360 8];
+      figure
+      distMat = sqrt(dist2(X(:, 1:q), X(:, 1:q))*q/size(Y, 2));
+      imagesc(distMat)
+      colormap gray
+      axis equal
+      set(gca, 'xlim', [0 360]);
+      set(gca, 'ylim', [0 360]);
+      set(gca, 'xtick', [0 90 180 270 360])
+      set(gca, 'ytick', [0 90 180 270 360])
+      set(gca, 'Xaxislocation', 'top')
+      colorbar
+      options = printLatexOptions;
+      printLatexPlot(['demSixKpca' num2str(q)], '../../../dimred/tex/diagrams', 0.75*textWidth, options);
+    end  
+    figure
+    imagesc(K)
+    colormap gray
+    axis equal
+    set(gca, 'xlim', [0 360]);
+    set(gca, 'ylim', [0 360]);
+    set(gca, 'xtick', [0 90 180 270 360])
+    set(gca, 'ytick', [0 90 180 270 360])
+    set(gca, 'Xaxislocation', 'top')
+    colorbar
+    printLatexPlot(['demSixKpcaCovariance'], '../../../dimred/tex/diagrams', 0.75*textWidth, options);
+    if q>7
+      figure
+      h = plot3(X(:, 3), X(:, 2), X(:, 1), 'bo');
+      if isoctave
+        set(gca, 'view', [70 34]);
+        origPos = get(gca, 'view');
+      else
+        origPos = get(gca, 'CameraPosition');
+      end
+      set(h, 'markersize', 5);
+      set(h, 'linewidth', 3);
+      axis equal
+      grid on
+      set(gca, 'xlim', [-0.25 0.25])
+      set(gca, 'ylim', [-0.25 0.25])
+      set(gca, 'zlim', [-0.25 0.25])
+      set(gca, 'xtick', [-2 -1 0 1 2]*0.1);
+      set(gca, 'ytick', [-2 -1 0 1 2]*0.1);
+      set(gca, 'ztick', [-2 -1 0 1 2]*0.1);
+      printLatexPlot('demSixKpca321-0', '../../../dimred/tex/diagrams', 0.75*textWidth, options);
+      pos = origPos;
+      for i = 1:5
+        if isoctave
+          pos = pos + randn(size(pos));
+          set(gca, 'view', pos);
+        else
+          pos = pos + randn(size(pos))*0.4;
+          set(gca, 'CameraPosition', pos);
+        end
+        pause(0.2)
+        printLatexPlot(['demSixKpca321-' num2str(i)], '../../../dimred/tex/diagrams', 0.75*textWidth, options);
+      end
+    end
+    %{
+  \end{matlab}
+  \begin{centering}
+    \subfigure[]{\input{../../../dimred/tex/diagrams/demSixKpcaCovariance}}
+    \hfill
+    \subfigure[]{\input{../../../dimred/tex/diagrams/demSixKpca360}}
+  \end{centering}
+
+  \caption{(a) similarity matrix for RBF kernel on rotated sixes. (b) implied
+    distance matrix for kernel on rotated sixes. Note that most of the
+    distances are set to $\sqrt{2}\approx1.41$.}
+
+\end{figure}
+
+
+
+\section{Salt Taffy Effect ? Need to check what John was referring to!}
+
+% % 
+\begin{figure}
+  \begin{center}
+    \subfigure[]{\input{../diagrams/demSixKpca321-0}}\hfill\subfigure[]{\input{../diagrams/demSixKpca567-0}}
+  \end{center}
+  \caption{Visualization of different dimensions of the rotated six
+    data using kernel PCA. Only close neighbors in the rotated data
+    are similar under the exponentiated quadratic kernel. Other points
+    are spread out along axes so that the dissimilar points are always
+    $\sqrt{2}$ apart in the latent space.}
+\end{figure}
+
+
+
+% \subsubsection{The Covariance Interpretation}
+
+% An inner product matrix such as $\cdataMatrix\cdataMatrix^{\top}$ also
+% has an interpretation as a covariance matrix. The inner product matrix
+% is positive (semi-)definite and of size
+% $\numData\times\numData$. Conversely the sample covariance,
+% $\cdataMatrix^\top \cdataMatrix$, is positive (semi-)definite and of
+% size $\dataDim\times\dataDim$. The sample covariance expresses the
+% empircal estimate of the covariance between data features, whereas the
+% inner product matrix expresses the empirical estimates between
+% \emph{data points}. This is an unusual shift in thinking for some
+% researchers, but it is quite natural. We tend to think of data points
+% as \emph{independent} and identically distributed. However, the
+% independence is only given the parameters of the model. If we don't
+% know the parameters of the model the data can be seen to covary. It is
+% this covariance that the inner product matrix is capturing. To see
+% this consider the following probabilistic model,
+% \[
+% p(\dataMatrix|\kernelMatrix, \meanVector) = \prod_{j=1}^\dataDim \mathcal{N}\left(\dataVector_{:, j} | \meanVector, \kernelMatrix\right).
+% \]
+% It differs from the standard model of a data set with a Gaussian because it expresses independence over the features instead of the data points.
+
+% We can optimize this model by maximum likelihood
+
+% Whilst. It expresses the covariance between  (Gaussian processes).
+
+% It expresses correlation and anti correlation between \emph{data points}.
+
+% Standard covariance expresses correlation and anti correlation between
+% \emph{data dimensions}.
+
+% Distance to Similarity: A Gaussian Covariance Interpretation
+
+% Translate between covariance and distance.
+% x
+% Consider a vector sampled from a zero mean Gaussian distribution,\[
+% \fantasyVector\sim\gaussianSamp{\zerosVector}{\kernelMatrix}.\]
+
+% Expected square distance between two elements of this vector is\[
+% \distanceScalar_{i,j}^{2}=\left\langle \left(\fantasyScalar_{i}-\fantasyScalar_{j}\right)^{2}\right\rangle \]
+% \[
+% \distanceScalar_{i,j}^{2}=\left\langle z_{i}^{2}\right\rangle +\left\langle z_{j}^{2}\right\rangle -2\left\langle z_{i}z_{j}\right\rangle \]
+% under a zero mean Gaussian with covariance given by $\mathbf{K}$
+
+% \fixme{Covariance interpretation and conditionally positive definite
+%   kernels ... see Schoelkopf and Smola.}
+
+%}
+
+%%% Local Variables:
+%%% TeX-master: "book"
+%%% End:

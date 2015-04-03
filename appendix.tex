@@ -1,0 +1,816 @@
+\chapter{Applications}
+
+Videos
+
+
+\section{Style based inverse kinematics }
+
+\cite{Grochow:styleik04}
+
+
+\section{Prior distributions for tracking }
+
+\cite{Urtasun:3dpeople06,Urtasun:priors05}.
+
+
+\section{Assisted drawing}
+
+\cite{Baxter:doodle06}
+
+
+\chapter{Other Topics}
+\begin{itemize}
+\item Initialisation 
+\item Local distance preservation 
+\item Dynamical models 
+\item Hierarchical models 
+\item Linear Back Constraints 
+\item Oil Data Comparison 
+\item Vowel data 
+\item WiFi SLAM 
+\item Non-Gaussian data 
+\end{itemize}
+
+\chapter{Outlook}
+
+
+\section{Summary}
+
+Summary
+\begin{itemize}
+\item We've advocated Dimenstionality Reduction as a good way of \emph{probabilistic}
+modelling in high dimensions.
+\item Probabilistic techniques map the {}``correct way'' around.
+
+\begin{itemize}
+\item This leads to problems with local minima.
+\end{itemize}
+\item Probabilistic dimensionality reduction is useful in practice.
+\item There are still many open problems to be overcome.
+\end{itemize}
+References
+
+{\tiny \bibliographystyle{abbrvnat}
+\bibliography{lawrence,other,zbooks}
+}{\tiny \par}
+
+\appendix
+Supplementary Material
+
+
+\subsection{Probabilistic PCA Proof}
+
+Maximum Likelihood Solution
+
+\textbf{Probabilistic PCA Max. Likelihood Soln} \cite{Tipping:probpca99}
+\begin{itemize}
+\item Implications: search high dimensional data by assuming it is implicitly
+lower dimensional. 
+\end{itemize}
+\begin{center}
+\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye}\]
+\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\covarianceMatrix},\,\,\,\,\,\,\,\covarianceMatrix=\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\mappingMatrix\right)=-\frac{\numData}{2}\log\left|\covarianceMatrix\right|-\frac{1}{2}\mbox{tr}\left(\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\right)+\mbox{const.}\]
+
+\par\end{center}
+
+\textbf{Gradient of log likelihood}
+
+\[
+\frac{\mathrm{d}}{\mathrm{d}\mappingMatrix}\log p\left(\dataMatrix|\mappingMatrix\right)=-\frac{N}{2}\covarianceMatrix^{-1}\mappingMatrix+\frac{1}{2}\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\covarianceMatrix^{-1}\mappingMatrix\]
+Seek fixed points\[
+\zerosVector=-\frac{N}{2}\covarianceMatrix^{-1}\mappingMatrix+\frac{1}{2}\covarianceMatrix^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix\covarianceMatrix^{-1}\mappingMatrix\]
+pre-multiply by 2$\covarianceMatrix$\[
+\zerosVector=-N\mappingMatrix+\dataMatrix^{\mathrm{T}}\dataMatrix\covarianceMatrix^{-1}\mappingMatrix\]
+\[
+\frac{1}{\numData}\dataMatrix^{\mathrm{T}}\dataMatrix\covarianceMatrix^{-1}\mappingMatrix=\mappingMatrix\]
+\newpage{}
+
+\textbf{Substitute $\mappingMatrix$ with singular value decomposition}\[
+\mappingMatrix=\eigenvectorMatrix\mathbf{L}\rotationMatrix^{\mathrm{T}}\]
+which implies\begin{align*}
+\covarianceMatrix & =\mappingMatrix\mappingMatrix^{\mathrm{T}}+\dataStd^{2}\eye\\
+ & =\eigenvectorMatrix\mathbf{L}^{2}\eigenvectorMatrix^{\mathrm{T}}+\dataStd^{2}\mathbf{I}\end{align*}
+
+
+Using matrix inversion lemma\[
+\covarianceMatrix^{-1}\mappingMatrix=\eigenvectorMatrix\mathbf{L}\left(\dataStd^{2}+\mathbf{L}^{2}\right)^{-1}\rotationMatrix^{\mathrm{T}}\]
+
+
+\textbf{\newpage{}Solution given by}
+
+\[
+\frac{1}{\numData}\mathbf{Y}^{\mathrm{T}}\mathbf{Y}\eigenvectorMatrix=\eigenvectorMatrix\left(\dataStd^{2}+\mathbf{L}^{2}\right)\]
+which is recognised as an eigenvalue problem. 
+\begin{itemize}
+\item This implies that the columns of $\eigenvectorMatrix$are the eigenvectors
+of $\frac{1}{\numData}\dataMatrix^{\mathrm{T}}\dataMatrix$ and that
+$\dataStd^{2}+\mathbf{L}^{2}$are the eigenvalues of $\frac{1}{\numData}\dataMatrix^{\mathrm{T}}\dataMatrix$.
+So $l_{i}=\sqrt{\lambda_{i}-\dataStd^{2}}$ where $\lambda_{i}$ is
+the $i$th eigenvalue of $\frac{1}{\numData}\dataMatrix^{\mathrm{T}}\dataMatrix$. 
+\item Further manipulation shows that if we constrain $\mappingMatrix\in\Re^{\dataDim\times\latentDim}$
+then the solution is given by the largest $\latentDim$ eigenvalues.
+\end{itemize}
+Probabilistic PCA Solution
+\begin{itemize}
+\item If $\eigenvectorMatrix_{\latentDim}$ are first $\latentDim$ principal
+eigenvectors of $\numData^{-1}\dataMatrix^{\mathrm{T}}\dataMatrix$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\mappingMatrix=\eigenvectorMatrix_{\latentDim}\mathbf{L}\rotationMatrix^{\mathrm{T}},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.
+\end{itemize}
+
+\subsection{Initialisation}
+
+Initialisation
+
+`Swiss Roll'
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.5\textwidth]{../../../gplvm/tex/diagrams/swissRollData}
+\par\end{centering}
+
+\caption{The `Swiss Roll' data set is data in three dimensions that is inherently
+two dimensional.}
+
+\end{figure}
+
+
+Initialisation II
+
+\textbf{Quality of solution is Initialisation Dependent}
+
+\begin{flushright}
+%
+\begin{figure}
+.\includegraphics[width=0.45\textwidth]{../../../gplvm/tex/diagrams/trSwiss1}\hfill{}\includegraphics[width=0.45\textwidth]{../../../gplvm/tex/diagrams/trSwiss2}
+
+\caption{\emph{Left:} Swiss roll solution initalised by PCA. \emph{Right:}
+Swiss roll solution initialised by Isomap.}
+
+\end{figure}
+
+\par\end{flushright}
+
+
+\subsection{Back Constraints}
+
+\textsc{NeuroScale}
+
+\textbf{Multi-Dimensional Scaling with a Mapping}
+\begin{itemize}
+\item \cite{Lowe:neuroscale96} made latent positions a function of the
+data.\[
+\latentScalar_{ij}=f_{j}\left(\dataVector_{i};\mappingVector\right)\]
+
+
+\begin{itemize}
+\item Function was either multi-layer perceptron or a radial basis function
+network.
+\item Their motivation was different from ours:
+
+\begin{itemize}
+\item They wanted to add the advantages of a true mapping to multi-dimensional
+scaling.
+\end{itemize}
+\end{itemize}
+\end{itemize}
+Back Constraints in the GP-LVM
+
+\textbf{Back Constraints}
+\begin{itemize}
+\item We can use the same idea to force the GP-LVM to respect local distances.\cite{Lawrence:backconstraints06}
+\item By constraining each $\latentVector_{i}$ to be a `smooth' mapping
+from $\dataVector_{i}$ local distances can be respected.
+\item This works because in the GP-LVM we maximise wrt latent variables,
+we don't integrate out.
+\item Can use any `smooth' function:
+
+\begin{enumerate}
+\item Neural network.
+\item RBF Network.
+\item Kernel based mapping.
+\end{enumerate}
+\end{itemize}
+Optimising BC-GPLVM
+
+\textbf{Computing Gradients}
+\begin{itemize}
+\item GP-LVM normally proceeds by optimising \[
+L\left(\latentMatrix\right)=\log p\left(\dataMatrix|\latentMatrix\right)\]
+with respect to $\latentMatrix$ using $\frac{dL}{d\latentMatrix}$.
+\item The back constraints are of the form\[
+\latentScalar_{ij}=f_{j}\left(\dataVector_{i,:};\mathbf{B}\right)\]
+where $\mathbf{B}$ are parameters.
+\item We can compute $\frac{dL}{d\mathbf{B}}$ via chain rule and optimise
+parameters of mapping.
+\end{itemize}
+Motion Capture Results
+
+\texttt{demStick1} \textbf{and} \texttt{demStick}3
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.5\textwidth]{../../../fgplvm/tex/diagrams/demStick1Connected}\includegraphics[width=0.5\textwidth]{../../../fgplvm/tex/diagrams/demStick3Connected}
+\par\end{centering}
+
+\caption{The latent space for the motion capture data with (\emph{right}) and
+without (\emph{left}) dynamics. The dynamics us a Gaussian process
+with an RBF kernel. \vspace{-1cm}
+}
+
+\end{figure}
+
+
+.
+
+Stick Man Results
+
+\texttt{demStickResults}
+
+\begin{center}
+\includegraphics[width=0.4\textwidth]{../../../fgplvm/tex/diagrams/demStick3AngleLatent}
+\par\end{center}
+
+%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+\includegraphics[scale=0.1]{../../../fgplvm/tex/diagrams/demStick3Angle1}
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+\includegraphics[scale=0.1]{../../../fgplvm/tex/diagrams/demStick3Angle2}
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+\includegraphics[scale=0.1]{../../../fgplvm/tex/diagrams/demStick3Angle3}
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+\includegraphics[scale=0.1]{../../../fgplvm/tex/diagrams/demStick3Angle4}
+\par\end{center}%
+\end{minipage}
+
+%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+(a)
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+(b)
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+(c)
+\par\end{center}%
+\end{minipage}%
+\begin{minipage}[c][1\totalheight][t]{0.25\textwidth}%
+\begin{center}
+(d)
+\par\end{center}%
+\end{minipage}
+
+\vspace{0.3cm}
+
+\small Projection into data space from four points in the latent
+space. The inclination of the runner changes becoming more upright.
+
+
+\subsection{Dynamics}
+
+Adding Dynamics
+
+\textbf{MAP Solutions for Dynamics Models}
+\begin{itemize}
+\item Data often has a temporal ordering.
+
+\begin{itemize}
+\item Markov-based dynamics are often used.
+\item For the GP-LVM
+
+\begin{itemize}
+\item Marginalising such dynamics is intractable.
+\item But: MAP solutions are trivial to implement.
+\end{itemize}
+\item Many choices: Kalman filter, Markov chains \emph{etc}..
+\item \cite{Wang:gpdm05} suggest using a Gaussian Process.
+\end{itemize}
+\end{itemize}
+Gaussian Process Dynamics
+
+\textbf{GP-LVM with Dynamics}
+\begin{itemize}
+\item Autoregressive Gaussian process mapping in latent space between time
+points.
+
+
+\begin{center}
+%
+\begin{figure}
+\centering{}\subfloat[]{
+
+\includegraphics[width=0.8\textwidth]{../../../oxford/tex/diagrams/demDynamicsArrowPlot6}}
+\end{figure}
+
+\par\end{center}
+
+\end{itemize}
+Motion Capture Results
+
+\texttt{demStick1} and \texttt{demStick2} 
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.4\textwidth]{../../../fgplvm/tex/diagrams/demStick1Connected}\includegraphics[width=0.4\textwidth]{../../../fgplvm/tex/diagrams/demStick2Connected}
+\par\end{centering}
+
+\caption{The latent space for the motion capture data without dynamics (\emph{left}),
+with auto-regressive dynamics (\emph{right}) based on an RBF kernel. }
+
+\end{figure}
+
+
+Regressive Dynamics
+
+\textbf{Inner Groove Distortion}
+
+5cm
+\begin{itemize}
+\item Autoregressive unimodal dynamics, $p\left(\latentVector_{t}|\latentVector_{t-1}\right)$
+.
+
+\begin{itemize}
+\item Forces spiral visualisation.
+\item Poorer model due to inner groove distortion.
+\end{itemize}
+4cm
+
+\includegraphics[width=0.8\textwidth]{../../../hgplvm/tex/diagrams/innerGroove}
+
+\end{itemize}
+Regressive Dynamics
+
+\textbf{Direct use of Time Variable}
+\begin{itemize}
+\item Instead of auto-regressive dynamics, consider regressive dynamics.
+
+\begin{itemize}
+\item Take $\mathbf{t}$ as an input, use a prior $p\left(\latentMatrix|\mathbf{t}\right)$.
+\item User a Gaussian process prior for $p\left(\latentMatrix|\mathbf{t}\right).$
+\item Also allows us to consider variable sample rate data.
+\end{itemize}
+\end{itemize}
+Motion Capture Results
+
+\texttt{demStick1}, \texttt{demStick2} \textbf{and} \texttt{demStick5}
+
+\begin{flushright}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.3\textwidth]{../../../fgplvm/tex/diagrams/demStick1Connected}\includegraphics[width=0.3\textwidth]{../../../fgplvm/tex/diagrams/demStick2Connected}\includegraphics[width=0.3\textwidth]{../../../fgplvm/tex/diagrams/demStick5Connected}
+\par\end{centering}
+
+\caption{The latent space for the motion capture data without dynamics (\emph{left}),
+with auto-regressive dynamics (\emph{middle}) and with regressive
+dynamics (\emph{right}) based on an RBF kernel. }
+
+\end{figure}
+
+\par\end{flushright}
+
+
+\subsection{Hierarchical GP-LVM}
+
+Hierarchical GP-LVM
+
+\textbf{Stacking Gaussian Processes}
+\begin{itemize}
+\item Regressive dynamics provides a simple hierarchy.
+\item The input space of the GP is governed by another GP.
+\item By stacking GPs we can consider more complex hierarchies.
+\item Ideally we should marginalise latent spaces
+
+\begin{itemize}
+\item In practice we seek MAP solutions.
+\end{itemize}
+\end{itemize}
+Two Correlated Subjects
+
+\texttt{demHighFive1}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textheight]{../../../hgplvm/tex/diagrams/demHighFive_talk}
+\par\end{centering}
+
+\caption{Hierarchical model of a 'high five'.}
+
+\end{figure}
+
+
+Within Subject Hierarchy
+
+\textbf{Decomposition of Body}
+
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.7\textheight]{../../../hgplvm/tex/diagrams/stickHierarchy}
+\par\end{centering}
+
+\caption{Decomposition of a subject.}
+
+\end{figure}
+
+
+Single Subject Run/Walk
+
+\texttt{demRunWalk1}
+
+\begin{flushright}
+%
+\begin{figure}
+\begin{centering}
+\includegraphics[width=0.8\textheight]{../../../hgplvm/tex/diagrams/demWalkRun_talk}
+\par\end{centering}
+
+\caption{Hierarchical model of a walk and a run.}
+
+\end{figure}
+
+\par\end{flushright}
+
+
+\subsection{Linear Back Constraints}
+
+Linear Back Constraints I
+\begin{itemize}
+\item Special case of back constraints is a \emph{linear} back constraint.
+
+
+\[
+\latentMatrix=\dataMatrix\mathbf{B}\]
+where $\mathbf{B}\in\Re^{\dataDim\times\latentDim}$.
+
+\item Maximise the likelihood with respect to the projection matrix $\mathbf{B}$.
+\item Seems strange to sacrifice the `non-linearity' of the model in this
+way.
+\item Motivate this through a digits data set.
+\end{itemize}
+Linear Back Constraints II
+
+\textbf{Digits Model with Linear Back Constraints}
+
+%
+\begin{minipage}[t][5cm][c]{0.5\textwidth}%
+\includegraphics[width=1\textwidth]{../../../fgplvm/tex/diagrams/fig_pca}%
+\end{minipage}\hfill{}%
+\begin{minipage}[t][5cm][c]{0.25\textwidth}%
+%
+\begin{minipage}[c][1.2cm]{1\columnwidth}%
+\includegraphics[width=0.15\textwidth]{../../../fgplvm/tex/diagrams/fig_plus}\includegraphics[width=0.8\textwidth]{../../../fgplvm/tex/diagrams/fig_generate_1}%
+\end{minipage}\\
+%
+\begin{minipage}[c][1.2cm]{1\columnwidth}%
+\includegraphics[width=0.15\textwidth]{../../../fgplvm/tex/diagrams/fig_circle}\includegraphics[width=0.8\textwidth]{../../../fgplvm/tex/diagrams/fig_generate_3}%
+\end{minipage}\\
+%
+\begin{minipage}[c][1.2cm]{1\columnwidth}%
+\includegraphics[width=0.15\textwidth]{../../../fgplvm/tex/diagrams/fig_cross}\includegraphics[width=0.8\textwidth]{../../../fgplvm/tex/diagrams/fig_generate_2}%
+\end{minipage}\\
+%
+\begin{minipage}[c][1.2cm]{1\columnwidth}%
+\includegraphics[width=0.15\textwidth]{../../../fgplvm/tex/diagrams/fig_square}\includegraphics[width=0.8\textwidth]{../../../fgplvm/tex/diagrams/fig_generate_4}%
+\end{minipage}%
+\end{minipage}
+
+Linear Back Constraints III
+
+%
+\begin{figure}
+\includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/fig_pca}\hfill{}\includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/fig_gp}
+
+\caption{Linear projections from PCA (\emph{left}) and linear back constrained
+GP-LVM (\emph{right})}
+
+\end{figure}
+
+
+1-Nearest Neighbour in $\latentMatrix$
+
+\textbf{Comparison for increasing latent dimensionality}
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+$\latentDim$ & \textbf{2} & \textbf{3} & \textbf{4}\tabularnewline
+\cline{1-2} 
+\begin{tabular}{|c}
+\hline 
+PCA\tabularnewline
+\hline 
+Errors\tabularnewline
+\end{tabular} & \multicolumn{1}{c||}{131} & 115 & \multicolumn{1}{c}{47}\tabularnewline
+\cline{2-4} 
+\begin{tabular}{|c|}
+Linear\tabularnewline
+\hline 
+constrained\tabularnewline
+\hline 
+GP-LVM Errors\tabularnewline
+\end{tabular} & 79 & 60 & 39\tabularnewline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+\emph{c.f.} 24 errors in data space
+\par\end{center}
+
+
+\subsection{Oil Flow Data}
+
+Oil Data I
+
+\textbf{Example Data set}
+\begin{itemize}
+\item Oil flow data \cite{Bishop:oil93}.
+
+\begin{itemize}
+\item Three phases of flow (stratified, annular, homogenous).
+\item Twelve measurement probes.
+\item 1000 data points.
+\item We sub-sampled to 100 data points
+\item Compare, with KPCA, MDS, Sammon mappings, PCA and GTM.
+\end{itemize}
+\end{itemize}
+Oil Data II
+
+\begin{center}
+%
+\begin{figure}
+\subfloat[PCA]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/pcaOil100}}\hfill{}\subfloat[Non-metric MDS]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/nonmetricMdsOil100}}\hfill{}\subfloat[Sammon Mapping]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/sammonOil100}}\\
+\subfloat[GTM]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/gtmOil100}}\hfill{}\subfloat[Kernel PCA]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/kpcaOil100}}\hfill{}\subfloat[GP-LVM]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/gplvmOil100}}
+\end{figure}
+
+\par\end{center}
+
+Oil Data III
+
+%
+\begin{figure}
+\subfloat[]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/pcaOil100}}\hfill{}\subfloat[]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/nonmetricMdsOil100}}\hfill{}\subfloat[]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/sammonOil100}}
+
+\subfloat[]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/gtmOil100}}\hfill{}\subfloat[]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/kpcaOil100}}\hfill{}\subfloat[]{
+
+\includegraphics[width=0.3\textwidth]{../../../gplvm/tex/diagrams/gplvmOil100}}
+
+\caption{(a) PCA, (b) Non-metric MDS (c) Sammon Mapping (d), \emph{right} GTM
+(e) Kernel PCA (f) GP-LVM}
+
+\end{figure}
+
+
+Oil Data IV
+
+\textbf{Nearest neighbour errors in} $\latentMatrix$ \textbf{space}
+\begin{itemize}
+\item Nearest neighbour classification in latent space.
+
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+Method & PCA & Non-metric MDS & Sammon Mapping\tabularnewline
+\hline 
+Errors & 20 & 13 & 6\tabularnewline
+\hline 
+Method & GTM{*} & Kernel PCA{*} & GP-LVM\tabularnewline
+\hline 
+Errors & 7 & 13 & 4\tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+{*} These models require parameter selection.
+\par\end{center}
+
+\end{itemize}
+
+\subsection{Vowels with Back Constraints}
+
+Vowel Data
+
+\textbf{Vocal Joystick Data}
+\begin{itemize}
+\item Vowel sounds from a vocal joystick system \cite{Bilmes:vocal06}.
+
+\begin{itemize}
+\item \url{http://ssli.ee.washington.edu/vj}
+\end{itemize}
+\item Vowels are from a single speaker and represented as: 
+
+\begin{itemize}
+\item cepstral coefficients (12 dimensions) and 
+\item 'deltas' (further 12 dimensions).
+\end{itemize}
+\item 2700 data points in total (300 for each vowel).
+\end{itemize}
+%
+\begin{figure}
+\subfloat[]{
+
+\includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/demVowelsInit}}\hfill{}\subfloat[]{
+
+\includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/demVowels2}}
+
+\subfloat[]{
+
+\includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/demVowelsIsomap}}\hfill{}\subfloat[]{
+
+\includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/demVowels3}}
+
+\caption{(a) PCA (b) GP-LVM \texttt{demVowels}2 (c) Isomap \texttt{demVowelsIsomap}
+(d) BC-GPLVM \texttt{demVowels}3.  The different vowels are shown
+as follows: \emph{/a/} red cross \emph{/ae/} green circle \emph{/ao/}
+blue plus \emph{/e/} cyan asterix \emph{/i/} pink square \emph{/ibar/}
+yellow diamond \emph{/o/} red down triangle \emph{/schwa/} green up
+triangle and \emph{/u/} blue left triangle.}
+
+\end{figure}
+
+
+1-Nearest Neighbour in $\latentMatrix$
+
+\textbf{Comparison of the Approaches}
+\begin{itemize}
+\item Nearest neighbour classification in latent space.
+
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+Method & GP-LVM & Isomap & BC-GP-LVM\tabularnewline
+\hline
+Errors & 226 & 458 & 155 \tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+\emph{cf} 24 errors in data space.
+\par\end{center}
+
+\end{itemize}
+\begin{flushright}
+
+\par\end{flushright}
+
+
+\subsection{WiFi SLAM}
+
+Robot SLAM I
+
+\textbf{Navigating by WiFi}
+\begin{itemize}
+\item Wireless access point signal strengths measured by robot moving around
+building.
+\item 215 separate signal strength readings.
+\item 30 separate access points.
+\item Robot moves in two dimensions so we expect data to be inherently 2-D.
+\item Learn GP-LVM, GP-LVM with Dynamics, back constrained GP-LVM and back
+constrained GP-LVM with dynamics.\cite{Ferris:wifi07}
+\end{itemize}
+Robot SLAM II
+
+%
+\begin{figure}
+\subfloat[Standard GP-LVM]{
+
+\includegraphics[width=0.3\textwidth]{../../../fgplvm/tex/diagrams/demRobotWireless1}}\hfill{}\subfloat[Standard GP-LVM]{
+
+\includegraphics[width=0.3\textwidth]{../../../fgplvm/tex/diagrams/demRobotWireless2}}\\
+\subfloat[Standard GP-LVM]{
+
+\includegraphics[width=0.3\textwidth]{../../../fgplvm/tex/diagrams/demRobotWireless3}}\hfill{}\subfloat[Standard GP-LVM]{
+
+\includegraphics[width=0.3\textwidth]{../../../fgplvm/tex/diagrams/demRobotWireless4}}
+
+\caption{ }
+
+\end{figure}
+
+
+
+\subsection{Non-Gaussian Data}
+
+Non-Gaussian Data
+
+{\textbf{Modelling Binary Data}}
+\begin{itemize}
+\item A common form of non-Gaussian data is \emph{binary data.}
+
+\begin{itemize}
+\item Can use Assumed Density Filtering to model binary data.
+\item This can also easily be extended to the Expectation Propagation Algorithm
+\cite{Minka:ep01}.
+\end{itemize}
+\item Practical consquences: 
+
+\begin{itemize}
+\item $d$ times slower.
+\item requires $d$ times more storage.
+\end{itemize}
+\end{itemize}
+Modelling Binary Twos
+
+\textbf{Cedar CD ROM digits}
+\begin{itemize}
+\item We model 700 examples of binary 8$\times$8 handwritten twos.
+\item Use a standard GP-LVM (a Gaussian noise assumption).
+\item Compare with ADF approximation for the Bernoulli noise model.
+\end{itemize}
+Twos Results I
+
+%
+\begin{figure}
+\begin{centering}
+\subfloat[Gaussian Noise Model]{
+
+\includegraphics[width=0.45\textwidth]{../../../gplvm/tex/diagrams/trTwos1}}\hfill{}\subfloat[Bernoulli Noise Model]{
+
+\includegraphics[width=0.45\textwidth]{../../../gplvm/tex/diagrams/trTwos2}}
+\par\end{centering}
+
+\caption{ }
+
+\end{figure}
+
+
+Twos Results II
+
+\textbf{Reconstruction of Deleted Pixels}
+
+%
+\begin{figure}
+\centering{}\includegraphics[width=1\textwidth]{../../../gplvm/tex/diagrams/trTwoReconstruct}
+\end{figure}
+
+
+\begin{center}
+\begin{tabular}{|c|c|}
+\hline 
+Reconstruction Method & Pixel Error Rate\tabularnewline
+\hline
+\hline 
+GP-LVM Bernoulli noise & 23.5\%\tabularnewline
+\hline 
+GP-LVM Gaussian noise & 35.9\%\tabularnewline
+\hline 
+Missing pixels `not ink' & 51.5\%\tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{flushright}
+
+\par\end{flushright}
+
+

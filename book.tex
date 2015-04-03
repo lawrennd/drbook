@@ -1,0 +1,68 @@
+%\documentclass[final,Comp7X9]{MITPress}
+\documentclass{book}
+%\usepackage{subfigure}
+% \usepackage[unicode=true, 
+% bookmarks=true,bookmarksnumbered=false,
+% colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black,%
+% pdfstartview=FitH,%
+% bookmarksopen=true,bookmarksopenlevel=0%
+% plainpages=false,pdfpagelabels,%
+% pagebackref=true,%
+% hyperindex=true,
+% pdftoolbar=false]{hyperref} 
+
+
+\input{bookDefs}
+\input{../notationDef}
+\input{../definitions}
+
+\widowpenalty=2000
+\clubpenalty=2000
+\hyphenpenalty=1000
+\tolerance=1000
+\setlength{\parskip}{3ex plus 2ex minus 2ex}
+
+\makeindex
+\makeglossary
+
+\begin{document}
+
+\title{Dimensionality Reduction for Machine Learning}
+
+\author{Neil D. Lawrence}
+
+\maketitle
+
+\tableofcontents{}
+\input{notation.tex}
+%\graphicspath{../diagrams/}
+%\DeclareGraphicsExtensions{.pdf,.png}
+
+%%%%%% MAIN TEXT %%%%%%
+\input{thinking}
+\input{linear}
+\input{mds}
+\input{kpca}
+\input{spectral}
+%\input{iterative}
+\input{nonlinear}
+%\input{gp}
+%\input{dppca}
+
+
+\printglossaries
+\appendix
+
+\bibliographystyle{plainnat}
+\bibliography{lawrence,other,zbooks}
+
+
+%\printindex
+
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 

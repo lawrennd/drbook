@@ -1,0 +1,92 @@
+\chapter*{Notation and Symbols}
+\markboth{Notation and Symbols}{Notation and Symbols}
+%\addcontentsline{toc}{chapter}{Notation and Symbols}
+
+
+
+\label{sec:notation}
+
+\section*{General Comments}
+
+Any background on notational choice here.
+\subsection{Reading Notation}
+
+The use of the design matrix convention means that the sample
+covariance matrix is given as
+$\sampleCovMatrix=\numData^{-1}\hat{\dataMatrix}^{\top}\hat{\dataMatrix}$.
+\[
+\mathrm{cov}\left(\mathbf{Y}\right)=\frac{1}{\numData}\sum_{i=1}^{\numData}\hat{\dataVector}_{i,:}\hat{\dataVector}_{i,:}^{\top}=\numData^{-1}\hat{\dataMatrix}^{\top}\hat{\dataMatrix}
+\]
+whilst the centered inner product matrix is given by
+$\kernelMatrix=\hat{\dataMatrix}\hat{\dataMatrix}^{\top}$\[
+\kernelMatrix=\left(\kernelScalar_{i,j}\right)_{i,j},\,\,\,\,\,\,\,\,\,\kernelScalar_{i,j}=\hat{\dataVector}_{i,:}^{\top}\hat{\dataVector}{}_{j,:}\]
+
+
+
+
+{
+\begin{tabular}{p{1.5cm}p{10.5cm}}
+
+
+
+
+\multicolumn{2}{l} {\hspace{3mm} \bf General} \\
+
+$\latentDim$& dimension of latent/embedded space\\
+$\dataDim$& dimension of data space\\
+$\numData$& number of data points\\
+$\dataMatrix=\left[\dataVector_{1,:},\dots,\dataVector_{\numData,:}\right]^\top=\left[\dataVector_{:,1},\dots,\dataVector_{:,\dataDim}\right]\in\Re^{\numData\times\dataDim}$ & data matrix \\
+$\cdataMatrix=\left[\cdataVector_{1,:},\dots,\cdataVector_{\numData,:}\right]^\top=\left[\cdataVector_{:,1},\dots,\cdataVector_{:,\dataDim}\right]\in\Re^{\numData\times\dataDim}$ & \emph{centered} data matrix\\
+$\latentMatrix=\left[\latentVector_{1,:},\dots,\latentVector_{\numData,:}\right]^{\top}=\left[\latentVector_{:,1},\dots,\latentVector_{:,\latentDim}\right]\in\Re^{\numData\times\latentDim}$ & latent variables\\
+$\mappingMatrix\in\Re^{\dataDim\times\latentDim}$ & mapping matrix\\
+$\centeringMatrix=\eye-\numData^{-1}\onesVector\onesVector^{\mathrm{T}}\in\Re^{\numData\times\numData}$ & centering matrix\\
+
+$\dataStd$ & standard deviation of a data set\\
+$\lengthScale$ & length scale of a kernel matrix\\
+
+
+\multicolumn{2}{l} {\hspace{3mm} \bf Vectors, Matrices and Norms} \\
+
+$\onesVector$   & vector with all entries equal to one  \\
+$\zerosVector$   & vector with all entries equal to zero  \\
+$\eye$     & identity matrix  \\
+$\textbf{A}^\top$ & transposed matrix (or vector)  \\
+$\textbf{A}^{-1}$ & inverse matrix (in some cases, pseudo-inverse)  \\
+$\tr{A}$ & trace of a matrix  \\
+$\det{A}$ & determinant of a matrix  \\
+$\twonorm{\cdot}$    & 2-norm, $\twonorm{\mathbf{x}} := \sqrt{ \mathbf{x}^\top\mathbf{x} }$  \\
+$\mathbf{a}_{i,:}$ & a column vector from the $i$th row of a given matrix
+$\mathbf{A}$\\
+$\mathbf{a}_{:,j}$ &a column vector from the $j$th column of a given matrix
+$\mathbf{A}$
+
+\end{tabular}
+\begin{tabular}{p{1.7cm}p{10.5cm}}
+
+
+\multicolumn{2}{l} {\hspace{3mm} \bf Probability} \\
+$P(C)$              & probability of an event $C$ \\
+$p(x)$                & density evaluated at $x$ \\
+$p(x|y)$                & density evaluated at $x$ conditioned on $y$\\
+$q(x)$                & approximating distribution (often variational) \\
+$\expectation{\cdot}{}  $      & expectation of a random variable\\
+$\expectationDist{\cdot}{p(\cdot)}  $      & expectation of a random variable under the density $p(\cdot)$\\
+$\gaussianSamp{\boldsymbol{\mu}}{\Sigma}$ & multivariate normal distribution with mean vector $\boldsymbol{\mu}$ and covariance matrix $\Sigma$ \\
+$\gaussianDist{\mathbf{z}}{\boldsymbol{\mu}}{\Sigma}$ & multivariate normal distribution with mean vector $\boldsymbol{\mu}$ and covariance matrix $\Sigma$, defined over $\mathbf{z}$\\
+$\gammaSamp{a}{b}$ & gamma distribution with shape parameter $a$ and rate parameter $b$\\
+$\gammaDist{z}{a}{b}$ & gamma distribution with shape parameter $a$ and rate parameter $b$, defined over $z$\\
+$\chiSquaredDist{1}{x}$ & Chi-squared density with one degree of freedom.\\
+
+\multicolumn{2}{l} {\hspace{3mm} \bf Miscellaneous} \\
+$\Re$ & the set of real numbers \\
+$\log$ &        logarithm to base $e$  \\
+$\log_2$ &     logarithm to base 2  \\
+$\delta_{ij}$ & Kronecker $\delta$ ($\delta_{ij} = 1 \mbox{ if } i=j, 0 \mbox{ otherwise}$)  \\
+$\delta_x$ & Dirac $\delta$, satisfying
+  $\int\delta_x(y)f(y)dy=f(x)$  \\[2mm]
+
+\end{tabular}
+}
+
+
+

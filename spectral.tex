@@ -1,0 +1,1141 @@
+%{
+\begin{matlab}
+  %}
+  % Comment/MATLAB set up code
+  importTool('dimred')
+  dimredToolboxes
+  randn('seed', 1e6)
+  rand('seed', 1e6)
+  if ~isoctave
+    colordef white
+  end
+  % Text width in cm.
+  textWidth = 10
+  %{
+  %   Start of Comment/MATLAB brackets
+\end{matlab}
+
+\newglossaryentry{Gaussian_random_field}{name={Gaussian random field},
+  description={a Gaussian distribution where there is typically a
+    neighborhood (often spatial) relationship between the variables
+    governed by the random field. The conditional relationships for
+    each variable are defined only in terms of its neighbors, leading
+    to a sparse inverse covariance for the Gaussian distribution}}
+
+
+\newglossaryentry{maximum_entropy}{name={maximum entropy principal},
+  description={Maximum entropy is a framework for deriving probability
+    distributions given some constraints on the moments of those
+    distributions. The basic idea is to look for a class of
+    distributions which respects those moment constraints, but has the
+    largest entropy of all distributions which respect those
+    constraints}}
+
+\chapter{Spectral Dimensionality Reduction}
+
+
+\section{Introduction}
+
+In this chapter we review spectral approaches to dimensionality reduction. The main innovation in these approaches over the scaling approaches we reviewed in the last chapter are in how the interpoint distances are computed. We mainly focus on four different algorithms: locally linear embeddings \citep{Roweis:lle00}, Laplacian eigenmaps  \citep{Belkin:laplacian03}, isomap \cite{Tenebaum:isomap00} and maximum variance unfolding \citep{Weinberger:learning04}. These approaches  are all closely related to the classical multidimensional scaling we introduced in the last chapter. The main difference between these different approaches in in the distance matrix they imply. We will present each algorithm, but also relate them through a unifying perspective derived from Gaussian random field models \cite{Lawrence:unifying10}. We will first consider the maximum variance unfolding (MVU) algorithm.
+
+
+% First we derive our model through the maximum entropy principle. Then we relate it to other popular spectral approaches to dimensionality reduction. We also introduce the iterative regression approach to model fitting that can refine the structure of the neighborhood graph. Finally we demonstrate the approaches (with comparisons) on two real world data sets. First though, we will briefly review classical multidimensional scaling which provides the general framework through which these approaches can be related \citep[see also][]{Ham:kernelDimred04}.
+
+% \subsection{Classical Multidimensional Scaling}
+
+% Given an $\numData\times\numData$ matrix of similarities, $\kernelMatrix$, or dissimilarities, $\distanceMatrix$, between a set of data points, multidimensional scaling considers the problem of how to represent these data in a low dimensional space. One way of doing this is to associate a $\latentDim$ dimensional latent vector with each data point, $\dataVector_{i, :}$, and define a set of dissimilarities between each latent point, $\latentDistanceScalar_{i,j} = \ltwoNorm{\latentVector_{i,:}-\latentVector_{j, :}}^2$, to give a matrix $\latentDistanceMatrix$. Here we have specified the squared distance between each point as the dissimilarity.\footnote{It is more usual to specify the distance directly as the dissimilarity, however, for our purposes it will be more convenient to work with squared distances}
+
+% If the error for the latent representation is then taken to be the sum of absolute values between the dissimilarity matrix entries, 
+% \begin{equation}
+% \errorFunction(\latentMatrix) = \sum_{i=1}^\numData\sum_{j=1}^{i-1}\loneNorm{\distanceScalar_{i,j} - \latentDistanceScalar_{i,j}}, \label{eq:mdsError}
+% \end{equation}
+% and we assume that the data dissimilarities also represent a squared
+% Euclidean distance matrix (perhaps computed in some high, maybe
+% infinite, dimensional space) then the best \emph{linear} dimensionality
+% reduction is given by the following procedure \citep[][pg
+% 400]{Mardia:multivariate79},
+% \begin{enumerate}
+%   \item Convert the matrix of dissimilarities to a matrix of similarities by taking $\centeredKernelMatrix=-\frac{1}{2}\centeringMatrix\distanceMatrix\centeringMatrix$ where $\centeringMatrix = \eye - \numData^{-1}\onesVector\onesVector^\top$ is a centering matrix.
+%   \item Extract the first $\latentDim$ principal eigenvectors of $\centeredKernelMatrix$.
+%   \item Setting $\latentMatrix$ to these principal eigenvectors (appropriately scaled) gives a global minimum for the error function \refeq{eq:mdsError}. 
+% \end{enumerate}
+\section{Maximum Variance Unfolding}
+
+Classical multidimensional scaling provides only a linear
+transformation of space in which the squared distances are
+expressed. The novelty of modern spectral approaches is distance computation in spaces which are nonlinearly
+related to the data. This gives a nonlinear
+algorithm. This can be seen clearest for kernel PCA. In kernel PCA the
+squared distances are embedded in a Hilbert space and related to the original
+data through a kernel function,
+\begin{equation}
+  \distanceScalar_{i,j}
+  = \kernelScalar(\dataVector_{i, :}, \dataVector_{i,:}) -
+  2\kernelScalar(\dataVector_{i, :}, \dataVector_{j, :}) -
+  \kernelScalar(\dataVector_{j,:}, \dataVector_{j, :})
+  \label{eq:standardTransformation}
+\end{equation}
+which is recognized as the squared distance in ``feature space''
+\citep[see][]{Ham:kernelDimred04}. In CMDS this is known as the
+\emph{standard transformation} between a similarity and distance
+\citep{Mardia:multivariate79}. Kernel PCA (KPCA) recovers an
+$\latentVector_{i, :}$ for each data point and a mapping from the data
+space to the $\latentMatrix$ space. Under the CMDS procedure the
+eigenvalue problem is performed on the centered kernel matrix,
+$\centeredKernelMatrix=\centeringMatrix\kernelMatrix\centeringMatrix$
+where $\kernelMatrix = \left[\kernelScalar(\dataVector_{i, :},
+  \dataVector_{j, :})\right]_{i,j}$. This matches the KPCA
+ algorithm \citep{Scholkopf:nonlinear98}. However, for the commonly
+used exponentiated square kernel, $\kernelScalar(\dataScalar_{i, :},
+\dataScalar_{j, :}) = \exp(-\gamma \ltwoNorm{\dataVector_{i, :} -
+  \dataVector_{j, :}}^2)$, KPCA actually expands the feature
+space rather than reducing the dimension \citep[see][for some examples
+of this]{Weinberger:learning04}.
+
+The observation that KPCA expands the feature space motivated the
+maximum variance unfolding algorithm
+\citep{Weinberger:learning04}. The idea in MVU is to learn a kernel
+matrix that will allow for dimensionality reduction. This is achieved
+by only considering \emph{local relationships} in the data. A set of
+neighbors is defined (e.g. by $k$-nearest neighbors) and only
+distances between neighboring data points are respected. These
+distances are specified as constraints, and the other elements of the
+kernel matrix are filled in by maximizing the trace of the kernel
+matrix, $\tr{\kernelMatrix}$, i.e. the \emph{total variance} of the
+data in feature space, while respecting the distance constraints and
+keeping the resulting matrix centered. Maximizing $\tr{\kernelMatrix}$
+in turn maximizes the interpoint squared distances for all points that are
+unconnected in the neighborhood graph, thereby unravelling the
+manifold.
+
+\todo{Prove that inverse of the covariance is sparse???}
+
+\section{Maximum Entropy Unfolding}
+
+The maximum variance unfolding was motivated by considering data points as a set of nodes in an interlinked graph. The idea was to reduce the dimensionality by forcing those nodes apart, but constraining connected nodes in the graph to be a fixed distance apart. The distance chosen was the distance in ``feature space'' proscribed by the kernel function that was learnt. A visualization is then obtained by computing the eigenvectors of the resulting graph. We will introduce further spectral approaches like this, but to give a unifying perspective, we introduce a slightly different approach to MVU: rather than maximizing the variance of the system, we consider maximizing the \emph{\gls{entropy}}\index{entropy}, the entropy $p(x)$ is t The entropy is related to the variance (see \refbox{box:entropy}), but maximum entropy has a side effect: it is equivalent to maximum likelihood and results in a \emph{probabilistic} model. As we saw for probabilistic PCA in \refchap{chap:linear} Probabilistic interpretations of a model can be useful as they allow the full calculus of probabilities to be applied to the system. This brings significant advantages, such as the ability to deal with missing data, placing the model within a wider probabilistic system (such as a mixture model) and applying Bayesian treatments.
+
+\begin{boxfloat}
+\caption{Entropy and Information Theory}\label{box:entropy}\index{entropy}
+
+The entropy of a distribution is the expectation of the negative log likelihood of the distribution under that distribution,
+\[
+P(x) = -\expDist{\log P(x)}{P(x)} = -\sum_{x} P(x) \log P(x).
+\]
+Negative log likelihood has an interpretation as the ``error'' when
+fitting probabilistic models to data. This means that the entropy has
+an interpretation as being the average error we expect across all data
+sets sampled from the model itself (since the expectation is under the
+distribution itself, $p(x)$). What governs this average error?
+Principally it is the number of different samples (or data sets) that
+$p(x)$ can generate. If the model $p(x)$ is deterministic then when
+sampled it will only ever give one result, and the probability of this
+result will be 1, giving an error of 0. If a model is defined over a
+space containing $M$ different possible values for $x$ and each of
+these values is equally likely, then the entropy is given by $\log
+M$. This is the maximum possible entropy. This model has the most
+possible outcomes and is associated with the largest amount of
+uncertainty. The idea here is that even if we have the right model for
+a data set, if the entropy is high, we don't still expect a large
+error.
+
+Continuous Systems
+
+Entropy is well defined for discrete systems, because the number of possible outcomes for a model is countable. For continuous systems the number of possible outcomes is infinite, so it is not well defined. By taking the limit of a discrete system as it becomes continuous we find that it becomes, 
+\[
+E(p(x)) = -\int p(x) \log p(x) \text{d}x - O(log \text{d}x).
+\]
+The second term is unbounded, so in practise we only really answer questions about the difference between entropies for continuous distributions (where that term cancels, this also happens in Kullback-Leibler divergences, see \refbox{box:kldivergence}), however we often (sloppily) think of the entropy as being given by
+\[
+E(p(x)) = -\int p(x) \log p(x) \text{d}x .
+\]
+and problems then only occur when we ask questions like what is the entropy of delta function (which we expect to be zero since it is deterministic) and we find that it is infinite.
+\end{boxfloat}
+
+
+\begin{boxfloat}
+\caption{The Maximum Entropy Principal}\label{box:maxent}\index{maximum entropy}
+
+The maximum entropy principal was developed by Ed Jaynes as a way of
+defining distributions. The principal is as follows: we wish to
+develop a distribution given only some constraint on the moments of
+the distributions. For example, we might know that the mean of the
+distribution is 1, and the variance is 1. Which class of distributions
+should we choose? The idea of maximum entropy is to choose the class
+which has the largest entropy under those constraints. In other words
+we want the model that will have the \emph{largest expected error} for
+any samples from it. Where error is defined to be the negative log
+likelihood. This seems a little counter intuitive at first: why should
+we want the distribution with the largest expected error? Bear in mind
+that this expected error is for future (test) data, any information we
+have currently is being included by the moment constraints. The
+largest expected error equates to the maximum uncertainty about
+samples from the distribution. The principal is that by maximizing the
+expected error we cover more possible data sets.
+
+The framework is extremely elegant, as it turns out that a variational
+maximization may be performed across all possible distributions, and
+that the resulting distribution always has the form
+\[
+P(x) \propto \exp(\sum_i \lambda_i f_i(x)
+\]
+\fixme{NEEDS FIXING}
+\end{boxfloat}
+
+Since entropy and variance both relate to uncertainty: as variance
+increases we become more uncertain about the likely outcome of our
+model, and in information theory entropy is the measure of
+uncertainty, we might expect maximizing entropy leads to a similar
+algorithm to MVU. Furthermore, it allows us to bring to bear the full
+\emph{\gls{maximum_entropy}}\index{maximum entropy} framework, developed by
+\citealp{Jaynes:bayes86}.
+
+In the maximum entropy formalism \citep[see e.g.][and
+\refbox{box:maxent}]{Jaynes:bayes86}, we maximise the entropy of a
+distribution subject to constraints on the moments of that
+distribution. Here those constraints will be the expectations of the
+squared distances between two data points sampled from the
+model. Constraints will only apply to points that are defined to be
+``neighbors''. For continuous data, maximum entropy can only be
+defined relative to a base distribution. We follow a common choice and
+take the base distribution to be a spherical Gaussian with covariance
+$\gamma^{-1}\eye$. The maximum entropy distribution is then given by
+\[
+p(\dataMatrix) \propto
+\exp\left(-\frac{1}{2}\tr{\gamma\dataMatrix\dataMatrix^\top}\right)\exp\left(-\frac{1}{2}\sum_{i}\sum_{j\in\neighborhood{i}}\lagrangeMultiplier_{i,j}
+  \distanceScalar_{i,j}\right),
+\] 
+where $\neighborhood{i}$ represents the set of neighbors of data point
+$i$, and $\dataMatrix=[\dataVector_{1, :}, \dots,
+\dataVector_{\numData, :}]^\top\in\Re^{\numData\times\dataDim}$ is the
+\emph{design matrix} containing our data and we've introduced ,
+$\{\lagrangeMultiplier_{i,j}\}$, which are a set of Lagrange
+multipliers (see \refbox{box:lagrangeMultipliers}) which enforce the
+moment constraints. Compared to the standard maximum entropy formalism
+we've introduced a factor of $-1/2$ in front of our Lagrange
+multipliers which will prove notationally convenient later on. Also
+for convenience, we define a sparse matrix of Lagrange multipliers,
+$\lagrangeMultiplierMatrix$ which contains $\lagrangeMultiplier_{i,j}$
+if $i$ is a neighbor of $j$ and zero otherwise. This allows us to
+write the distribution as
+\[
+p(\dataMatrix) \propto
+\exp\left(-\frac{1}{2}\tr{\gamma\dataMatrix\dataMatrix^\top}-\frac{1}{4}\tr{\lagrangeMultiplierMatrix
+    \distanceMatrix}\right).
+\] We now introduce a matrix
+$\laplacianMatrix$. This matrix is going to allow us to rewrite the
+distribution in terms of $\dataMatrix$ instead of
+$\distanceMatrix$. The matrix $\laplacianMatrix$ is symmetric and
+constrained to have a null space in the constant vector,
+i.e. $\laplacianMatrix \onesVector = \zerosVector$. Its off diagonal
+elements are given by $-\lagrangeMultiplierMatrix$. We then force the
+null space constraint by setting its diagonal elements to be the sum
+of the off diagonal in the corresponding row (or column since it is
+symmetric) giving $\laplacianScalar_{i,i}=\sum_{j\in\neighborhood{i}}
+\lagrangeMultiplier_{i, j}$. This enables us to write
+\[
+\tr{\laplacianMatrix\distanceMatrix} = -\tr{\lagrangeMultiplierMatrix\distanceMatrix}
+\]
+This is possible because the distance matrix, $\distanceMatrix$, is
+zero along its diagonal. The trace of a matrix product is equivalent
+to multiplying each matrix together elementwise and then summing over
+all the elements of the result (see also \refbox{box:trace}). Since
+the distance matrix is zero along the diagonal then this trace is
+unaffected by what the diagonal elements of $\laplacianMatrix$ are, we
+can set them as we please without changing the value of
+$\tr{\laplacianMatrix\distanceMatrix}$. Our choice to set them as the
+sum of the off diagonals gives the $\laplacianMatrix$ that null space
+in the constant vector. Recalling the matrix representation of the
+squared distance matrix,
+\[
+\distanceMatrix =
+\onesVector\diag{\dataMatrix\dataMatrix^\top}^\top -
+2\dataMatrix\dataMatrix^\top +
+\diag{\dataMatrix\dataMatrix^\top}\onesVector^\top,
+\] 
+where the operator $\diag{\mathbf{A}}$ forms a vector from the
+diagonal of $\mathbf{A}$. We now see the benefit of incorporating that
+null space,
+\[
+-\tr{\lagrangeMultiplierMatrix\distanceMatrix}=\tr{\laplacianMatrix\distanceMatrix} =
+\tr{\laplacianMatrix\onesVector\diag{\dataMatrix\dataMatrix^\top}^\top
+  - 2\laplacianMatrix\dataMatrix\dataMatrix^\top +
+  \diag{\dataMatrix\dataMatrix^\top}\onesVector^\top\laplacianMatrix}
+= -2\tr{\laplacianMatrix\dataMatrix\dataMatrix^\top},
+\] 
+where we have used the properties of the trace
+(\refbox{box:trace}). This in turn allows us to recover
+\begin{equation}
+p(\dataMatrix) = \frac{\det{\laplacianMatrix + \gamma\eye}^{\frac{1}{2}}}{(2\pi)^{\frac{\numData\dataDim}{2}}} \exp\left(-\frac{1}{2}\tr{(\laplacianMatrix + \gamma\eye)\dataMatrix\dataMatrix^\top}\right). \label{eq:randomField}
+\end{equation}
+which is recognized as a \emph{\gls{Gaussian_random_field}}\index{Gaussian random field} (see \refbox{box:grf}).
+
+\begin{boxfloat}
+\caption{Gaussian Random Field}\label{box:grf}
+
+A Gaussian random field is a particular type of Gaussian distribution where there is an underlying neighborhood structure. Each variable governed by the Gaussian distribution is conditioned only on its neighbors in the field. There is a sparse structure to the This implies we can write
+\end{boxfloat}
+
+We can now write down the full form of this probability distribution:
+it is a \emph{Gaussian random field}. It can be written as
+\[ 
+p(\dataMatrix) = \prod_{j=1}^\dataDim\frac{\det{\laplacianMatrix +
+    \gamma\eye}^{\frac{1}{2}}}{(2\pi)^{\frac{\numData}{2}}}
+\exp\left(-\frac{1}{2}\dataVector_{:,j}^\top(\laplacianMatrix +
+  \gamma\eye)\dataVector_{:, j}\right),
+\]
+which clarifies the fact that the GRF is being expressed independently
+across data features (each vector $\dataVector_{:,j}$ contains the
+$j$th feature from all data points).  The model therefore falls into
+the class of models we defined in \refsec{sec:ppcaOptimize} as
+\emph{feature consistency}, so they are appropriate in the large $p$
+small $n$ domain which has traditionally been thought to be so
+problematic. This contrasts with most applications of Gaussian models
+that are applied independently across data points. Notable exceptions
+include the dual form of probabilistic PCA we saw in \refchap{chap:linear}, the
+Gaussian process latent variable model we will see in \refchap{chap:gp} and
+work on semisupervised learning \citep{Zhu:graphsemi03} and human
+learning \citep{Kemp:form08}. 
+
+\fixme{Why is this so, say either in box or here}
+As with all maximum entropy methods, maximum likelihood for this model
+is equivalent to finding the correct setting of the Lagrange
+multipliers. We can find the parameters $\lagrangeMultiplierMatrix$
+through maximum likelihood on this distribution. Some algebra shows
+that the gradient of each Lagrange multiplier is given by,
+\[
+\diff{\log p(\dataMatrix)}{\lagrangeMultiplier_{i,j}} = \frac{1}{2}\expectationDist{\distanceScalar_{i,j}}{p(\dataMatrix)} - \frac{1}{2}\distanceScalar_{i,j},
+\]
+where $\expectationDist{}{p(\cdot)}$ represents an expectation under
+the distribution $p(\cdot)$. This result is expected given our maximum
+entropy formulation.  To compute gradients we need the expectation of
+the squared distance given by $\expectation{\distanceScalar_{i,j}} =
+\expectation{\dataScalar_{i, :}^\top\dataScalar_{i, :}} -
+2\expectation{\dataScalar_{i, :}^\top\dataScalar_{j, :}} +
+\expectation{\dataScalar_{j, :}^\top\dataScalar_{j, :}}$, which we can
+compute directly from the covariance matrix of the GRF, $\kernelMatrix = \left(\laplacianMatrix +
+  \gamma\eye\right)^{-1}$,
+\[
+\expectation{\distanceScalar_{i,j}} = \frac{\dataDim}{2}\left(\kernelScalar_{i,i} - 2\kernelScalar_{i,j} + \kernelScalar_{j,j}\right).
+\]
+This is immediately recognized as a scaled version of the standard
+transformation between distances and similarities (see
+\refchap{chap:mds}). This relationship arises naturally in the
+probablistic model. Every Gaussian random field has an implied
+associated distance matrix. It is this matrix that is being used in
+classical multidimensional scaling. In \refchap{chap:mds} we also
+interpreted this as the distance in ``feature space'' defined by the
+kernel function. Now, however, and also in MVU, each individual
+element of the kernel matrix \emph{cannot} in general be represented
+only as a function of the corresponding two data points (i.e. we can't
+represent them as
+$\kernelScalar_{i,j}=\kernelScalar(\dataVector_{i,:},
+\dataVector_{j,:})$). Given this we feel it is more correct to think
+of this matrix as a covariance matrix induced by our specification of
+the random field rather than a true Mercer kernel.
+
+If $\numNeighbors$ neighbors are used for each data point there are
+$O(\numNeighbors\numData)$ parameters in the model, so the model is
+nonparametric in the sense that the number of parameters increases
+with the number of data. For the parameters to be well determined we
+require a large number of features, $\dataDim$, for each data point,
+otherwise we would need to look to regularize the model.\fixme{reference ahead if we do this, but probably we won't}
+
+Once the maximum likelihood solution is recovered the data can be
+visualized, as for MVU and kernel PCA, by looking at the eigenvectors
+of the centered covariance matrix
+$\centeringMatrix\kernelMatrix\centeringMatrix$. The resulting
+algorithm has been called maximum entropy unfolding
+\citep[MEU][]{Lawrence:unifying10}.
+
+Note that the entropy of a Gaussian is related to the
+determinant of the covariance matrix which can be re-expressed as the
+sum of the log of the eigenvalues of $\kernelMatrix$, $\log
+\det{\kernelMatrix}=\sum_{i=1}^\numData \log \eigenvalue_i$. In
+contrast MVU looks to maximize the trace of the covariance matrix
+$\tr{\kernelMatrix}=\sum_{i=1}^\numData \eigenvalue_i$, subject to
+distance constraints.
+
+When optimizing in MVU and MEU we need to ensure that the covariance
+matrix is positive definite. In MVU this is ensured through a
+semidefinite program. In MEU the objective is not linear in
+$\kernelMatrix$ so we need to use other approaches. Possibilities
+include exploiting the fact that if the Lagrange multipliers are constrained to
+be positive the system is ``attractive'' and this guarantees a valid
+covariance \citep[see e.g.][pg 255]{Koller:book09}. Although now (as
+in a suggested variant of the MVU) the distance constraints would be
+inequalities. Another alternative would be to constrain
+$\laplacianMatrix$ to be diagonally dominant through adjusting
+$\gamma$. We will also consider two further approaches in
+\refsec{sec:lle} and \refsec{sec:drill}.
+
+Finally, we note that for MEU and MVU, as we increase the neighborhood
+size to $\numNeighbors = \numData-1$, we recover principal component
+analysis. In this limit all expected squared distances, implied by the
+GRF model, are required to match the observed
+squared distances and $\laplacianMatrix$ becomes non-sparse. Classical
+multidimensional scaling on the resulting squared distance matrix is
+known as principal coordinate analysis and is equivalent to principal
+component analysis \citep[see][]{Mardia:multivariate79}. 
+
+\section{Laplacian Eigenmaps}
+
+Laplacian eigenmaps is a fast and powerful approach to dimensionality
+reduction introduced by \citep{Belkin:laplacian03}.
+
+ % In Laplacian
+% eigenmaps a graph Laplacian is specified across the data points. This
+% Laplacian has exactly the same form as our matrix $\laplacianMatrix$,
+% which we will henceforth refer to as the Laplacian. The parameters of
+% the Laplacian are set either as constant or according to the distance
+% between two points. The smallest eigenvectors of this Laplacian are
+% then used for visualizing the data (disregarding the eigenvector
+% associated with the null space).
+
+\subsection{Relation to Maximum Entropy Unfolding}
+
+From the eigendecomposition of
+$\kernelMatrix =
+\eigenvectorMatrix\eigenvalueMatrix\eigenvectorMatrix^\top$ it is easy
+to show that $\laplacianMatrix = \eigenvectorMatrix
+\left(\eigenvalueMatrix^{-1}-\gamma\eye\right)\eigenvectorMatrix^\top$
+is the eigendecomposition of $\laplacianMatrix$. So in other words,
+the principal eigenvalues of $\kernelMatrix$ will be the smallest
+eigenvalues of $\laplacianMatrix$. The very smallest eigenvalue of
+$\laplacianMatrix$ is zero and associated with the constant
+eigenvector. However, in CMDS this would be removed by the centering
+operation and in LE it is discarded. So we see that once the
+parameters of the Laplacian have been set CMDS is being performed to
+recover the latent variables in Laplacian eigenmaps. However, since
+the moment constraints are not being imposed in Laplacian eigenmaps,
+the squared distance matrix used for CMDS will not preserve the
+inter-neighbor distances as it will for MVU and MEU. In fact since the
+covariance matrix is never explicitly computed it is not possible to
+make specific statements about what these distances will be in the
+general case. However, LE gains significant computational advantage by
+not representing the covariance matrix explicitly. No matrix inverses
+are required in the algorithm and the resulting eigenvalue problem is
+sparse. This means that LE can be applied to much larger data sets
+than would be possible for MEU or MVU.
+
+\section{Locally Linear Embedding}\label{sec:lle}
+
+The locally linear embedding, along with isomap, triggered a revolution in spectral methods in the machine learning community. 
+
+
+
+\subsection{Relation to Maximum Entropy Unfolding}
+
+When introducing MEU we discussed how it is necessary to constrain the
+Laplacian matrix to be positive semidefinite. A further way of doing
+this is to factorize the Laplacian as $\laplacianMatrix =
+\laplacianFactor\laplacianFactor^\top$ where $\laplacianFactor$ is
+non-symmetric.  If $\laplacianFactor$ is constrained so that
+$\laplacianFactor^\top\onesVector = \zerosVector$ then we will also
+have $\laplacianMatrix\onesVector=\zerosVector$. We can achieve this
+constraint by setting the diagonal elements
+$\laplacianFactorScalar_{i,i} = -\sum_{j\in\neighborhood{i}}
+\laplacianFactorScalar_{j, i}$. Then if we force
+$\laplacianFactorScalar_{j,i}=0$ if $j\notin\neighborhood{i}$ we will
+have a Laplacian matrix which is positive semidefinite without need
+for any further constraint on $\laplacianFactor$. Note that the
+sparsity pattern of $\laplacianMatrix$ will be different from the
+pattern of $\laplacianFactor$. The entry for
+$\laplacianScalar_{i,j}$ will only be zero if there are no shared
+neighbors between $i$ and $j$.
+
+Locally linear embeddings \citep{Roweis:lle00} are then a specific
+case of this random field model where
+\begin{enumerate}
+  \item The diagonal sums, $\laplacianFactorScalar_{i,i}$, are further constrained to unity.
+  \item The parameters of the model are optimized by maximizing the pseudolikelihood  of the resulting GRF.
+\end{enumerate}
+To see the first point, we note that if the diagonals were constrained
+to unity then we can write $\laplacianFactor = \eye -
+\weightMatrix$. Here the sparsity pattern of $\weightMatrix$ matches
+$\laplacianFactor$, apart from the diagonal which is set to zero. These constraints mean that $(\eye - \weightMatrix)^\top \onesVector =
+\zerosVector$. LLE proscribes that the smallest eigenvectors of $(\eye
+- \weightMatrix)(\eye - \weightMatrix)^\top =
+\laplacianFactor\laplacianFactor^\top = \laplacianMatrix$ are used
+with the constant eigenvector associated with the eigenvalue of 0
+being discarded. As for the Laplacian eigenmaps this is equivalent to
+CMDS on the Gaussian random field described by $\laplacianMatrix$.
+
+For the second point we consider the following. The pseudolikelihood
+approximation \citep[see e.g.][pg 970]{Koller:book09} to the joint
+density in a graphical model is the product of the conditional
+densities: $p(\dataMatrix)\approx \prod_{i=1}^\numData
+p(\dataVector_{i,:}|\dataMatrix_{\backslash i})$, where
+$\dataMatrix_{\backslash i}$ represents all that data other than the
+$i$th point. The true joint likelihood is proportional to the
+product of conditional densities, but it requires renormalization. In
+pseudolikelihood this normalization is ignored. To see how this
+decomposition applies we first factorize the model by noting that
+$\tr{\dataMatrix\dataMatrix^\top
+  \laplacianFactor\laplacianFactor^\top}=\sum_{i=1}^\numData
+\laplacianFactorVector_{:, i}^\top \dataMatrix\dataMatrix^\top
+\laplacianFactorVector_{:, i}$ so we have
+$\exp\left(-\frac{1}{2}\tr{\dataMatrix\dataMatrix^\top
+    \laplacianFactor\laplacianFactor^\top}\right) =
+\prod_{i=1}^\numData \exp\left(-\frac{1}{2} \laplacianFactorVector_{i,
+    :}^\top \dataMatrix \dataMatrix^\top \laplacianFactorVector_{i,
+    :}\right)$. This provides the necessary factorization for the
+conditionals which can be rewritten as
+\[
+p(\dataVector_{i, :}|\dataMatrix_{\backslash i}) = \left(\frac{\laplacianFactorScalar_{i,i}^2}{2\pi }\right)^\frac{\dataDim}{2}\exp\left(-\frac{\laplacianFactorScalar_{i,i}^2}{2}\ltwoNorm{\dataVector_{i, :} - \sum_{j\in\neighborhood{i}}\frac{\weightScalar_{j, i}}{\laplacianFactorScalar_{i,i}}\dataVector_{j, :} }^2\right).
+\]
+Optimizing the pseudolikelihood is equivalent to optimizing $\log
+p(\dataMatrix) \approx \sum_{i=1}^\numData \log p(\dataVector_{i,
+  :}|\dataMatrix_{\backslash i})$ which is equivalent to solving
+$\numData$ independent regression problems with a constraint on the
+regression weights that they sum to one. This is exactly what is done
+to estimate the parameters in LLE \citep{Roweis:lle00}. The constraint
+arises because the regression weights are constrained to be
+$\weightScalar_{j,i}/\laplacianFactorScalar_{i,i}$ and
+$\laplacianFactorScalar_{i,i} = \sum_{j\in \neighborhood{i}}
+\weightScalar_{j, i}$. Effectively in LLE a further constraint is
+placed that $\laplacianFactorScalar_{i,i}=1$ which implies none of
+these regression problems should be solved to a greater precision than
+another. However, the algorithm also works if this further constraint
+isn't imposed. 
+
+Locally linear embeddings are therefore an approximation to maximum
+likelihood on the Gaussian random field. They have a neat way of
+constraining the Laplacian to be positive semidefinite by assuming a
+factorized form. The pseudolikelihood also allows for relatively quick
+parameter estimation by ignoring the partition function from the
+actual likelihood. This again removes the need to invert to recover
+the covariance matrix and means that LLE can be applied to larger data
+sets than MEU or MVU. However, the sparsity pattern in the
+Laplacian for LLE will not match that used in the Laplacian for the
+other algorithms due to the factorized representation.
+
+LLE is motivated by considering local linear embeddings of the data,
+although interestingly, as we increase the neighborhood size to
+$\numNeighbors = \numData-1$ 
+we do not recover PCA which is known to be the optimal linear
+embedding of the data under linear Gaussian constraints. The fact that
+LLE is optimizing the pseudolikelihood makes it clear why this is the
+case. In contrast the MEU algorithm, which LLE approximates, does recover
+PCA when $\numNeighbors = \numData-1$.
+
+\section{Isomap}
+
+Isomap is perhaps one of the most intuitive dimensionality reduction approaches, from the perspective of classical multidimensional scaling, isomap works to ensure that the distances embedded genuinely do reflect the distances along the mainifold.
+
+\begin{boxfloat}
+\caption{Shortest Path Algorithms}\label{box:shortestPath}
+\end{boxfloat}
+
+
+\subsection{Relation to Other Spectral Approaches}
+
+Isomap more directly follows the CMDS framework. In isomap
+\citep{Tenenbaum:isomap00} a sparse graph of distances is created
+between all points considered to be neighbors. This graph is then
+filled in for all non-neighboring points by finding the shortest
+distance between any two neighboring points in the graph (along the
+edges specified by the neighbors). The resulting matrix is then
+element-wise squared to give a matrix of square distances which is
+then processed in the usual manner (centering and multiplying by -0.5)
+to provide a similarity matrix for multidimensional scaling. Compare
+this to the situation for MVU and MEU. Both MVU and MEU can be thought
+of as starting with a sparse graph of (squared) distances. The other
+distances are then filled in by either maximizing the trace of the
+associated covariance or maximizing the entropy of the associated
+Gaussian distribution. Importantly, though, the interneighbor
+distances in this graph are preserved (through constraints imposed by
+Lagrange multipliers) just like in isomap. For both MVU and MEU the
+covariance matrix, $\kernelMatrix$, is guaranteed positive
+semidefinite because the distances are implied by an underlying
+covariance matrix that is constrained positive definite. For isomap
+the shortest path algorithm is effectively approximating the distances
+between non-neighboring points. This can lead to an implied covariance
+matrix which has negative eigenvalues (see
+\citep{Weinberger:learning04}).  The algorithm is still slower than
+LLE and LE because it requires a dense eigenvalue problem and the
+application of a shortest path algorithm to the graph provided by the
+neighbors.
+
+
+% \subsection{Iterative Regression Approach to Optimization}\label{sec:drill}
+
+% The relationship between spectral dimensionality reduction algorithms
+% and Gaussian random fields now leads us to consider a novel
+% dimensionality reduction algorithm inspired by the observation that optimizing a
+% Gaussian random field model can be done through iterative regression
+% problems \citep[see][Chapter 17]{Hastie:elements09}. These methods are
+% appealing as they retain the positive definitiveness of covariance
+% and, through appropriate regularization (such as the graphical lasso),
+% they can perform some structure determination. For dimensionality
+% reduction though we need to place additional sparsity constraints on
+% the model. Namely: only points in the neighborhood should be allowed non-zero regression coefficients 
+% considered as potential neighbors in the graph. We call the resulting
+% algorithm Dimensionality Reduction through Iterative Log Likelihood
+% maximization (DRILL). These graph optimization methods are designed for
+% general forms of precision matrix, not just those based on a Laplacian. We derive such a model using a slightly different maximum entropy formulation. In
+% particular, rather than constraining moments of squared distances to
+% match for neighbors, we suggest that the second moment
+% $\expectation{\dataVector_{i, :}^\top\dataVector_{j, :}}$ should be constrained for neighbors. This gives us an alternative maximum
+% entropy formalism where
+% \[
+% p(\dataMatrix) \propto \exp\left(-\frac{1}{2}\tr{\dataMatrix\dataMatrix^\top (\lagrangeMultiplierMatrix + \gamma\eye)}\right).
+% \]
+% Once again maximum likelihood in this
+% system is equivalent to finding the Lagrange multipliers, but now we
+% could also consider regularized maximum likelihoods \citep[see
+% e.g.][]{Banerjee:sparse07,Friedman:sparse08} allowing us to perform
+% further structure learning (some initial structural constraints are
+% already imposed by the neighborhood graph).
+
+% From the maximum entropy perspective, we can think of graphical regression in the following way. Taking gradients with respect to the Lagrange multipliers we have $\kernelScalar_{i,j} - \dataVector_{i, :}^\top\dataVector_{j, :} = 0$ for all $i,j$ where $\lagrangeMultiplier_{i,j}\neq 0$, i.e. for any point pair which are neighbors. This allows us to write, for any given data point, $i$, 
+% $\kernelVector_{i, \neighborhood{i}} - \dataMatrix_{\neighborhood{i}}\dataVector_{i, :} = \zerosVector$ where $\kernelVector_{i,\neighborhood{i}}$ is a column vector from the $i$th row of $\kernelMatrix$ composed of elements which are neighbors of $i$. The partitioned inverse formula then tells us that $\kernelVector_{i, \neighborhood{i}} = \kernelMatrix_{\neighborhood{i}}\weightVector_{i, \neighborhood{i}}$ where $\weightVector_{\neighborhood{i},i} = -\lagrangeMultiplierMatrix_{\neighborhood{i}, i}/(\lagrangeMultiplier_{i, i} + \gamma)$ and $\kernelMatrix_{\neighborhood{i}}$ are the rows and columns of $\kernelMatrix$ associated with neighbors of $i$. The idea in graphical regression is to solve the system of equations,
+% \begin{equation}
+% \kernelMatrix_{\neighborhood{i}}\weightVector_{i, \neighborhood{i}} - \dataVector_{i, :}^\top\dataVector_{j, :} = \zerosVector, \label{eq:graphRegression}
+% \end{equation}
+% for $\weightVector_{i, \neighborhood{i}}$. This is done iteratively for each data point $i$ and the row of $\kernelMatrix$ is updated with $\kernelMatrix_{i, \backslash i} = \kernelMatrix_{\backslash i, \neighborhood{i}}\weightVector_{i, \neighborhood{i}}$ and similarly for the column. 
+% This can be seen as a regression problem and reformulated to include regularization for $\weightVector_{i, \neighborhood{i}}$ which would imply regularization on $\lagrangeMultiplierMatrix$. Such regularization may be necessary when the number of features, $\dataDim$ is small relative to the data set size, $\numData$.
+
+% \section{Experiments}
+
+% For our expeirments we consider two real world data sets. Code to
+% recreate all our experiments is in the supplementary material. We
+% applied each of the spectral methods we have reviewed along with MEU
+% using positive constraints on the Lagrange multipliers (denoted MEU)
+% and the DRILL described in \refsec{sec:drill}. To evaluate the quality
+% of our embeddings we follow the suggestion of Harmeling
+% \citep{Harmeling:exploring07} and use the GPLVM likelihood
+% \citep{Lawrence:pnpca05}. The higher the likelihood the better the
+% embedding. Harmeling conducted exhaustive tests over different
+% manifold types (with known ground truth) and found the GPLVM
+% likelihood was the best indicator of the manifold quality amoungst all
+% the measures he tried. Our first data set consists of human motion
+% capture data.
+
+% \subsection{Motion Capture Data}
+
+% The data consists of a 3-dimensional point cloud of the location of 34
+% points from a subject performing a run. This leads to a 102
+% dimensional data set containing 55 frames of motion capture. The
+% subject begins the motion from stationary and takes approximately
+% three strides of run. We hope to see this structure in the
+% visualization: a starting position followed by a series of loops.  The
+% data was made available by Ohio State University. The data is
+% characterized by a cyclic pattern during the strides of run. However,
+% the angle of inclination during the run changes so there are slight
+% differences for each cycle. The data is very low noise, as the motion
+% capture rig is designed to extract the point locations of the subject
+% to a high precision.
+
+% The two dominant eigenvectors are visualized in Figure
+% \ref{fig:embedStick} and the quality of the visualizations under the
+% GPLVM likelihood is given in Figure \ref{fig:histograms}(a).
+% \begin{matlab}
+% %}
+%   textSize = '\\tiny';
+%   clear score;
+% models = {'le', 'lle', 'isomap', 'mvu', 'meu', 'drill'};
+%   names = {[textSize ' LE'],  [textSize ' LLE'],  [textSize ' isomap'],  [textSize ' MVU'],  [textSize ' MEU'],  [textSize ' DRILL']};
+%   for i = 1:length(models);
+%     loadName = models{i};
+%     loadName(1) = upper(loadName(1));
+%     load(['../../matlab/demStick' loadName '1.mat']);
+%     eval(['score(i) = ' models{i} 'Info.score']);
+%     eval(['X = ' models{i} 'Info.X']);
+%     figure(1)
+%     clf
+%     plot(X(:, 1), X(:, 2), 'b-');
+%     hold on
+%     b = plot(X(:, 1), X(:, 2), 'ro');
+%     set(b, 'markersize', 2, 'linewidth', 3);
+%     set(gca, 'xtick', [-3 -2 -1 0 1 2 3]);
+%     set(gca, 'xticklabel', [-3 -2 -1 0 1 2 3]);
+%     set(gca, 'ytick', [-3 -2 -1 0 1 2 3]);
+%     set(gca, 'yticklabel', [-3 -2 -1 0 1 2 3]);
+%     set(gca, 'xticklabel', {[textSize ' -3'], [textSize ' -2'], [textSize ' -1'], [textSize ' 0'], [textSize ' 1'], [textSize ' 2'], [textSize ' 3']});
+%     set(gca, 'ytick', [-3 -2 -1 0 1 2 3]);
+%     set(gca, 'yticklabel', {[textSize ' -3'], [textSize ' -2'], [textSize ' -1'], [textSize ' 0'], [textSize ' 1'], [textSize ' 2'], [textSize ' 3']});
+%     printLatexPlot(['demStick' loadName '1'], '../../../dimred/tex/diagrams/', 0.3*textWidth)
+%   end
+%   clf
+%   barh(score);
+%   set(gca, 'ytick', [1 2 3 4 5 6])
+%   set(gca, 'yticklabel', names)
+%   set(gca, 'xtick', [0 2000 4000]);
+  
+%   printLatexPlot('demStickBar1', '../../../dimred/tex/diagrams/', 0.23*textWidth)
+% %{
+% \end{matlab}
+
+% \begin{figure}
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickLe1}}
+%   \hfill
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickLle1}}
+%   \hfill
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickIsomap1}}
+%   \hfill
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickMvu1}}
+%   \hfill
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickDimred1}}
+%   \hfill
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickDrill1}}
+%   \caption{(a) LE, (b) LLE, (c) isomap, (d) MVU, (e) MEU and (f) the DRILL. Models capture either the cyclic structure or the structure associated with the start of the run or both parts.}\label{fig:embedStick}
+% \end{figure}
+% There is a clear difference in quality between the methods that constrain local distances (MVU, isomap, MEU and DRILL) which are much better under the score than those that don't (LE and LLE).
+
+% \subsection{Robot Navigation Example}
+
+% The second data set we use is a series of recordings from a robot as
+% it traces a square path in a building. The robot records the strength
+% of WiFi signals in an attempt to localize its position \citep[see][for
+% an application]{Ferris:wifi07}. Since the robot moves only in two
+% dimensions, the inherent dimensionality of the data should be two: the
+% reduced dimensional space should reflect the robot's movement. The WiFi
+% signals are noisier than the motion capture data, so it makes an
+% interesting contrast. The robot completes a single circuit after
+% entering from a separate corridor, so it is expected to exhibit ``loop
+% closure'' in the resulting map. The data consists of 215 frames of
+% measurement, each frame consists of the WiFi signal strength of 30
+% access points.
+
+% The results for the range of spectral approaches are shown in Figure
+% \ref{fig:embedRobot} with the quality of the methods scored in Figure
+% \ref{fig:histograms}(b). Both in the visualizations and in the GPLVM
+% scores we see a clear difference in quality for the methods that
+% preseve local distances (i.e. again isomap, MVU, MEU and DRILL are better than LLE and LE).
+% \begin{matlab}
+% %}
+%   textSize = '\\tiny';
+%   clear score;
+%   models = {'le',  'lle', 'isomap', 'mvu', 'meu', 'drill'};
+%   names = {[textSize ' LE'],  [textSize ' LLE'],  [textSize ' isomap'],  [textSize ' MVU'],  [textSize ' MEU'],  [textSize ' DRILL']};
+%   for i = 1:length(models);
+%     loadName = models{i};
+%     loadName(1) = upper(loadName(1));
+%     load(['../../matlab/demRobotWireless' loadName '1.mat']);
+%     eval(['score(i) = ' models{i} 'Info.score']);
+%     eval(['X = ' models{i} 'Info.X']);
+%     figure(1)
+%     clf
+%     plot(X(:, 1), X(:, 2), 'b-');
+%     hold on
+%     b = plot(X(:, 1), X(:, 2), 'ro');
+%     set(b, 'markersize', 2, 'linewidth', 3);
+%     set(gca, 'xtick', [-3 -2 -1 0 1 2 3]);
+%     set(gca, 'xticklabel', {[textSize ' -3'], [textSize ' -2'], [textSize ' -1'], [textSize ' 0'], [textSize ' 1'], [textSize ' 2'], [textSize ' 3']});
+%     set(gca, 'ytick', [-3 -2 -1 0 1 2 3]);
+%     set(gca, 'yticklabel', {[textSize ' -3'], [textSize ' -2'], [textSize ' -1'], [textSize ' 0'], [textSize ' 1'], [textSize ' 2'], [textSize ' 3']});
+%     printLatexPlot(['demRobotWireless' loadName '1'], '../../../dimred/tex/diagrams/', 0.3*textWidth)
+%   end
+%   clf
+%   barh(score);
+%   set(gca, 'ytick', [1 2 3 4 5 6])
+%   set(gca, 'yticklabel', names)
+%   set(gca, 'xtick', [-6000 -1000 4000]);
+%   printLatexPlot('demRobotWirelessBar1', '../../../dimred/tex/diagrams/', 0.23*textWidth)
+% %{
+% \end{matlab}
+
+% \begin{figure}
+%   \subfigure[]{\small\input{../../../dimred/tex/diagrams/demRobotWirelessLe1}}
+%   \hfill
+%   \subfigure[]{\small\input{../../../dimred/tex/diagrams/demRobotWirelessLle1}}
+%   \hfill
+%   \subfigure[]{\small\input{../../../dimred/tex/diagrams/demRobotWirelessIsomap1}}
+%   \hfill
+%   \subfigure[]{\small\input{../../../dimred/tex/diagrams/demRobotWirelessMvu1}}
+%   \hfill
+%   \subfigure[]{\small\input{../../../dimred/tex/diagrams/demRobotWirelessDimred1}}
+%   \hfill
+%   \subfigure[]{\small\input{../../../dimred/tex/diagrams/demRobotWirelessDrill1}}
+
+% \caption{(a) LE, (b) LLE, (c) isomap, (d) MVU, (e) MEU and (f) the DRILL for the robot WiFi data. Some models struggle to captured the loop structure (perhaps because of the higher level of noise). Most models also show the noise present in the data WiFi signals. MEU does a nice job of smoothing away the noise, giving a truer reflection of the robots actual movements.}\label{fig:embedRobot}
+% \end{figure}
+% \begin{matlab}
+% %}
+%   textSize = '\\tiny';
+%   clear score;
+%   reg = [0.0002 0.0005 0.001 0.002 0.005 0.01 0.02 0.05 0.1];
+%   for i = 1:length(reg);
+%     loadName = ['demStickDrill2_' num2str(reg(i))];
+%     load(['../../matlab/' loadName]);
+%     score(i) = model.score;
+%   end
+%   figure(1)
+%   clf
+%   barh(score);
+%   set(gca, 'ytick', [1:length(reg)])
+%   regS = cell(1, length(reg));
+%   for i = 1:length(reg)
+%     regS{i} = [textSize ' ' num2str(reg(i))];
+%   end
+%   set(gca, 'yticklabel', regS)
+%   set(gca, 'xtick', [0 2000 4000]);
+  
+%   printLatexPlot('demStickDrillBar1', '../../../dimred/tex/diagrams/', 0.23*textWidth)
+  
+%   [void, ind] = max(score);
+%   loadName = ['demStickDrill2_' num2str(reg(ind))];
+%   load(['../../matlab/' loadName]);
+%   X = model.X;
+%   figure(1)
+%   clf
+%   plot(X(:, 1), X(:, 2), 'b-');
+%   hold on
+%   b = plot(X(:, 1), X(:, 2), 'ro');
+%   set(b, 'markersize', 2, 'linewidth', 3);
+%   set(gca, 'xtick', [-3 -2 -1 0 1 2 3]);
+%   set(gca, 'xticklabel', {[textSize ' -3'], [textSize ' -2'], [textSize ' -1'], [textSize ' 0'], [textSize ' 1'], [textSize ' 2'], [textSize ' 3']});
+%   set(gca, 'ytick', [-3 -2 -1 0 1 2 3]);
+%   set(gca, 'yticklabel', {[textSize ' -3'], [textSize ' -2'], [textSize ' -1'], [textSize ' 0'], [textSize ' 1'], [textSize ' 2'], [textSize ' 3']});
+%   printLatexPlot(['demStickDrill2'], '../../../dimred/tex/diagrams/', 0.23*textWidth)
+  
+  
+% %{
+% \end{matlab}
+
+% \begin{figure}
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickBar1}}
+%   \hfill
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demRobotWirelessBar1}}
+%   \hfill
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickDrillBar1}}
+%   \hfill
+%   \subfigure[]{\input{../../../dimred/tex/diagrams/demStickDrill2}}
+%   \caption{Model score for the different spectral approaches. (a) the motion capture data visualizations, (b) the robot navigation example visualizations, (c) DRILL on motion capture data for different L1 regularization coefficients. (d) Visualization of motion capture data for L1 regualized system with regularization set to $0.01$ (i.e. the regularization with the maximum score).}\label{fig:histograms}
+% \end{figure}
+
+% \subsection{Learning the Neighborhood}
+
+% Our final experiment tests the ability of lasso regularization of the
+% random field to learn the neighborhood. We considered the motion
+% capture data and used the DRILL with a large neighborhood size of 20
+% and L1 regularization on the parameters. As we varied the
+% regularization coefficient we found a maximum under the GPLVM score
+% (Figure \ref{fig:histograms}(c)). The visualization associated with
+% this maximum is shown in Figure \ref{fig:histograms}(d) this may be
+% compared with Figure \ref{fig:embedStick}(f) which used 6 neighbors.
+
+
+% \section{Discussion and Conclusions}
+
+% We have introduced a new perspective on dimensionality reduction
+% alorithms based around maximum entropy. Our starting point was the
+% maximum variance unfolding and our end point was a novel approach to
+% dimensionality reduction based on Gaussian random fields and lasso
+% based structure learning. We hope that this new perspective on
+% dimensionality reduction will encourage new strands of research at the
+% interface between these areas.
+
+% \section{Maximum Likelihood for Maximum Entropy Unfolding}
+
+% Given a sparsity pattern for the connectivity of the springs as
+% determined by the neighbors in data space we have the sparsity pattern
+% for the stiffness matrix, $\laplacianMatrix$. Our probabilistic model
+% for the data then takes the form:
+% \begin{align*}
+%   p(\dataMatrix) = \prod_{j=1}^\dataDim \frac{\det{\laplacianMatrix +
+%       \gamma\eye}^{\frac{1}{2}}}{(2\pi)^{\numData/2}}\exp\left(-\frac{1}{2}\dataVector_{:,
+%       j}^\top\left(\laplacianMatrix + \gamma\eye\right)\dataVector_{:,
+%       j}\right).
+% \end{align*}
+
+% The log likelihood of the data is given by,
+% \begin{align*}
+% \log p(\dataMatrix) = \frac{\dataDim}{2}\log \det{\laplacianMatrix +
+%   \gamma \eye}- \frac{1}{2}
+% \tr{\left(\laplacianMatrix + \gamma
+%     \eye\right)\dataMatrix
+%   \dataMatrix^\top} + \text{const},
+% \end{align*}
+% where we have replaced the sum over the data dimensions with in the
+% quadratic form with a trace. This allows us, in turn to write,
+% \begin{align*}
+% \log p(\dataMatrix) = \frac{\dataDim}{2}\log \det{\laplacianMatrix +
+%   \frac{\gamma}\eye} - \frac{1}{2}
+% \tr{\laplacianMatrix\dataMatrix\dataMatrix^\top}
+% -\frac{\gamma}{2}\tr{\dataMatrix
+% \dataMatrix^\top} + \text{const},
+% \end{align*}
+% where we have used the fact that the sum over the matrix inner
+% products is equal to the trace operation (the sum over diagonal
+% elements), and that the trace of a sum is the sum of the traces.
+
+% Now consider trace of the matrix product
+% $\tr{\laplacianMatrix\dataMatrix\dataMatrix^\top}$. Since
+% $\laplacianMatrix$ has a null space in the constant vector we can use
+% the definition of the squared distance matrix,
+% \[
+% \distanceMatrix = \onesVector\diag{\dataMatrix\dataMatrix^\top}^\top - 2\dataMatrix\dataMatrix^\top + \diag{\dataMatrix\dataMatrix^\top}\onesVector^\top
+% \]
+%  and the commutation properties
+% of matrices within a trace to recover
+% $\tr{\laplacianMatrix\dataMatrix\dataMatrix^\top} =
+% -\frac{1}{2}\tr{\laplacianMatrix\distanceMatrix}$. We then seen the log-likelihood can be expressed in terms
+% of the variance of the data matrix and the interpoint distances defined by
+% the data matrix.
+% \[
+% \log p(\dataMatrix) = \frac{\dataDim}{2}\log \det{\laplacianMatrix +
+%   \gamma\eye} + \frac{1}{4}
+% \tr{\laplacianMatrix\distanceMatrix}
+% -\frac{\gamma}{2}\sum_{i=1}^\numData\dataVector_{i, :}^\top\dataVector_{i,:}.
+% \]
+
+% Gradients of the log likelihood with respect to the stiffness matrix
+% can be computed as
+% \[
+% \frac{\mathrm{d}\log p(\dataMatrix)}{\mathrm{d}\laplacianMatrix} =
+% \frac{\dataDim}{2}\left(\laplacianMatrix +
+%   \gamma\eye\right)^{-1} +
+% \frac{1}{4} \distanceMatrix.
+% \]
+% Using the definition of $\kernelMatrix = (\laplacianMatrix + \gamma\eye)^{-1}$ we can write 
+% \[
+% \diff{\log p(\dataMatrix)}{\laplacianScalar_{i,j}}
+% = \frac{\dataDim}{2}\kernelScalar_{i,j} + \frac{1}{4}
+% \distanceScalar_{i,j}.
+% \]
+% Using the fact that $\laplacianScalar_{i, i} =
+% \sum_{j\in\neighborhood{i}}\lagrangeMultiplier_{i, j}$ and
+% $\laplacianScalar_{i,j} = -\lagrangeMultiplier_{i, j}$ for $i\neq j$ we
+% can compute the corresponding gradients with respect to the Lagrange
+% multipliers using the chain rule,
+% \begin{align*}
+%   \diff{\log p(\dataMatrix)}{\lagrangeMultiplier_{i,j}} &= \frac{\dataDim}{2}\left(\kernelScalar_{i,i} - 2\kernelScalar_{i,j} + \kernelScalar_{j,j}\right) - \frac{1}{2} \distanceScalar_{i,j}\\
+% %  \frac{\mathrm{d}\log p(\dataMatrix)}{\mathrm{d}\springScalar_{i,j}}
+%  & =
+%   \frac{1}{2}\expDist{\distanceScalar_{i,j}}{p\left(\dataMatrix\right)}
+%   - \frac{1}{2} \distanceScalar_{i,j}
+% \end{align*}
+% so we can see that the gradient of the log likelihood with respect to
+% a Lagrange multiplier is zero if the expected squared distance under
+% our Gaussian model is equal to the actual distance between the
+% points. This neat result arises from the maximum entropy formulation
+% of the model. It says that if two points are closer under the expected
+% distance than the true distance the corresponding Lagrange multiplier
+% should be decreased. Conversely, if they are further under the
+% expected distance than the true distance, the Lagrange multiplier should
+% be increased. Convergence only occurs when all distances match.
+
+% A further issue is that we must ensure that the covariance matrix
+% stays positive definite. There are two straightforward ways to do
+% this. Firstly, we can the random field to be attractive
+% (positive). This means that the solution would also be found when two
+% data are closer under their expected distance than their observed
+% distance and the associated spring constant is zero. In other words we
+% would have replaced our moment matching requirement with an inequality
+% that suggests the moment should be no greater than the empirical
+% value.
+
+% \section{Optimization of the LLE Log Likelihood}
+
+% In the locally linear embedding, weights are set according to an
+% optimal reconstruction of each point by its neighbors. This
+% reconstruction considers each point and its neighbors
+% independently.
+
+% The objective function for LLE is typically given as
+% \[
+% E\left(\bar{\weightVector}\right) = \frac{1}{2} \sum_{i=1}^\numData
+% \sum_{j=1}^\dataDim \left(\dataScalar_{i, j} - \sum_{k\in
+%     \neighborhood{i}} \bar{\weightScalar}_{i,k} \dataVector_{k, j}\right)^2
+% \]
+% with a further constraint $\sum_{k\in \neighborhood{i}}
+% \bar{\weightScalar}_{i,k}=1$. This objective function can be seen as a probabilistic model. To form the likelihood we exponentiate the negative energy giving,
+% \[
+% p(\dataVector_{i,:}|\dataMatrix_{\neighborhood{i}},\bar{\weightVector}_{i,:}) \propto \exp\left(\frac{1}{2}\sum_{j=1}^\dataDim \left[\dataScalar_{i,j} - \sum_{k\in\neighborhood{i}}\bar{\weightScalar}_{i,k}\dataVector_{k,j}\right]\right)
+% \]
+% So we have a model where the target values, $\dataVector_{i,:}$ are predicted from the neighbors using a set of normalized weights, $\bar{\weightVector}_{i,:}$. We introduce unnormalized weights $\weightVector_{i,:}$ and use the fact that $\laplacianFactorScalar_{i,i} = \sum_{j\in\neighborhood{i}}\weightVector_{i,j}$ to write 
+% \[
+% p(\dataVector_{i,:}|\dataMatrix_{\neighborhood{i}},\weightVector_{i,:}) \propto \exp\left(\frac{1}{2}\sum_{j=1}^\dataDim \left[\laplacianFactorScalar_{i,i}\dataScalar_{i,j} - \sum_{k\in\neighborhood{i}}\weightScalar_{i,k}\dataVector_{k,j}\right]^2\right)
+% \]
+% and then by dividing through by $\laplacianFactorScalar_{i,i}$ we can write
+% \[
+% p(\dataVector_{i,:}|\dataMatrix_{\neighborhood{i}},\weightVector_{i,:}) \propto \exp\left(\frac{\laplacianFactorScalar_{i,i}^2}{2}\sum_{j=1}^\dataDim \left[\dataScalar_{i,j} - \laplacianFactorScalar_{i,i}^{-1}\sum_{k\in\neighborhood{i}}\weightScalar_{i,k}\dataVector_{k,j}\right]^2\right)
+% \]
+% from which we can see that $\laplacianFactorScalar_{i,i}$ can be set to arbitrary values and the original optimization is recovered. The objective is recognized as a Gaussian density,
+% \[
+% p\left(\dataVector_{i,:}|\dataMatrix_{\neighborhood{i}}, \weightVector_{i,:}\right) = \prod_{j=1}^\dataDim\gaussianDist{\dataScalar_{i,j}}{\laplacianFactorScalar_{i,i}^{-1} \sum_{k\in\neighborhood{i}}\weightScalar_{i,k}\dataVector_{k,j}}{\laplacianFactorScalar_{i,i}^{-2}}.
+% \]
+% This is a conditional distribution of the $i$th data point  given all the others. The pseudolikelihood approximation involves approximating the joint distribution with a product of all the conditional distributions. The resulting log joint density has the form,
+% \begin{align*}
+% \log p\left(\dataMatrix|\weightVector_{i,:}\right) & = \dataDim\log \laplacianFactorScalar_{i,i} 
+% - \sum_{j=1}^\dataDim \frac{\laplacianFactorScalar_{i,i}^2}{2} \left(\dataScalar_{i,j}-\laplacianFactorScalar_{i,i}^{-1}\weightVector_{:,i}^\top\dataVector_{:,j}\right)^2 \\
+% \log p\left(\dataMatrix|\weightVector_{i,:}\right) & = \dataDim\log \laplacianFactorScalar_{i,i} 
+% - \sum_{j=1}^\dataDim \frac{1}{2} \left(\onesVector\dataScalar_{i,j}-\dataVector_{:,j} \right)^\top\weightVector_{:,i}\weightVector_{:,i}^\top\left(\onesVector\dataScalar_{i,j}-\dataVector_{:,j}\right) 
+% \end{align*}
+% where $\aMatrix_i=\aVector_i\onesVector_{\neighborhood{i}}^\top-\eye_{\neighborhood{i}}$ where $\aVector_i$ is a vector of zeros, except for the $i$th element which is 1, $\onesVector_{\neighborhood{i}}$ is a vector containing ones for all elements in the neighborhood of $i$ and zero otherwise. Finally $\eye_{\neighborhood{i}}$ is a diagonal matrix with ones for diagonal elements which are in the neighborhood of $i$ and zeros otherwise. These properties mean that $\aMatrix_i\weightVector_{i,:}=\laplacianFactorVector_{i,:}$, i.e. we can form $\laplacianFactor$ through $\weightMatrix$ and the various $\aMatrix_i$s.  This matrix also acts a little like a centering matrix for the neighborhood of the $i$th data point, but rather than subtracting off the mean, it subtracts off the $i$th data point from the neighborhood. This means that $\aMatrix_i^\top \dataVector_{:, j}= (\onesVector\dataScalar_{i,j} - \dataVector_{\neighborhood{i},j})$
+% \begin{align*}
+% \log p\left(\dataMatrix|\weightVector_{i,:}\right) = \dataDim\log \laplacianFactorScalar_{i,i} 
+% - \sum_{j=1}^\dataDim \frac{1}{2} \tr{\aMatrix_i^\top\dataVector_{:,j}\dataVector_{:,j}^\top\aMatrix_i\weightVector_{:,i}\weightVector_{:,i}^\top}
+% \end{align*}
+
+% Gradients of the joint density over all $\dataMatrix$ can  now be computed,
+% \[
+% \diff{\log p\left(\dataMatrix|\weightVector_{i,:}\right)}{\weightVector_{i,:}} = \frac{\dataDim}{\laplacianFactorScalar_{i,i}}\onesVector - \aMatrix_i^\top\sum_{j=1}^\dataDim\dataVector_{:,j}\dataVector_{:,j}^\top\aMatrix_i\weightVector_{:,i}.
+% \]
+% This can be solved as
+% \[
+% \laplacianFactorScalar_{i,i}\weightVector_{:,i} = \left(\aMatrix^\top_i\frac{1}{\dataDim}\sum_{j=1}^\dataDim\dataVector_{:,j}\dataVector_{:,j}^\top\aMatrix_i \right)^{-1}\onesVector
+% \]
+% which, up to a scaling, is the same as the solution for regular LLE. Note that we can rewrite this solution:
+% \[
+% \laplacianFactorScalar_{i,i}\weightVector_{:,i} = \left(\aMatrix^\top_i\frac{1}{\dataDim}\dataMatrix\dataMatrix^\top\aMatrix_i \right)^{-1}\onesVector
+% \]
+% and since $\onesVector^\top \aMatrix_i=\zerosVector$ we can write
+% \[
+% \laplacianFactorScalar_{i,i}\weightVector_{:,i} = -\frac{1}{2}\left(\aMatrix^\top_i\frac{1}{\dataDim}\distanceMatrix\aMatrix_i \right)^{-1}\onesVector.
+% \]
+
+% \section{Optimizing Latent Variables}
+
+% Once the parameters of the Laplacian are set, the next stage in these dimensionality reduction algorithms is to find a low dimensional representation of the data. For example in LLE \citep{Roweis:lle00} the suggestion is to globally minimize a function of the following form,
+% \[
+% \errorFunction(\latentMatrix)= \tr{\latentMatrix\latentMatrix^\top(\eye - \weightMatrix)(\eye - \weightMatrix)^\top}
+% \]
+% where the elements of each $\weightMatrix$ are given by
+% $\weightScalar_{i,j}$ except for the diagonal elements which are set
+% to zero. If $\laplacianFactorScalar_{i,i}$ is constrained to unity for all $i$. We can rewrite this objective as
+% \[
+% \errorFunction(\latentMatrix)= \tr{\latentMatrix\latentMatrix^\top\laplacianFactor\laplacianFactor^\top}.
+% \]
+% This can also be seen by using the fact that
+% $\laplacianFactor\laplacianFactor^\top = \sum_{i=1}^\numData
+% \aMatrix_i^\top \weightVector_{i, :}\weightVector_{i, :}^\top
+% \aMatrix_i$.  So we recognize this as a Gaussian density with
+% precision matrix given by
+% $\kernelMatrix^{-1}=\laplacianFactor\laplacianFactor^\top = \laplacianMatrix$ and we have temporarily dropped the $\gamma\eye$ term.
+
+% Once the Laplacian, $\laplacianMatrix$, we can think of the spectral
+% approximation seeking the most likely $\latentDim$ dimensional
+% variables to be sampled from this mode,
+% \begin{align*}
+% \latentMatrix& = \text{argmax}_\latentMatrix \log p(\latentMatrix|\weightMatrix)\\
+% & = \text{argmin}_\latentMatrix \tr{\laplacianFactor\laplacianFactor^\top\latentMatrix\latentMatrix^\top}
+% \end{align*}
+% where the latent variables are now being drawn from the Gaussian
+% random field that generated the original data and we are finding the
+% most likely set of latent variables. Note that minimization of this
+% negative log likelihood (which matches that suggested in the original
+% LLE model and is solved through an eigenvalue problem) is not effected
+% by whether a likelihood or a pseudolikelihood is used for optimizing
+% $\weightMatrix$. That is because the difference between the product of
+% Gaussians likelihood and the pseudolikelihood is only in the
+% normalization term which depends on $\weightMatrix$ but not on
+% $\latentMatrix$.
+
+\section{Physical Interpretation of the System}
+
+The maximum entropy model we introduced has a physical interpretation
+that may provide some intuition when understanding the process of dimensionality
+reduction.
+
+\subsection{The Mattress Model}
+
+An  often used  example  to introduce  the  problem of  dimensionality
+reduction is that of a piece of (two dimensional) paper is crumpled so
+that  it lives  in a  three dimensional  space. In  this  analogy, the
+process of dimensionality reduction is the flattening out of the three
+dimensional crumpled paper to a two dimensional space. The analogy can
+also  be extended to  consider data  spaces of  higher dimensionality,
+$\dataDim$,   and   higher   dimensional,  $\latentDim$,   pieces   of
+paper. However, for the moment  let's consider a two dimensional sheet
+of paper crumpled in a $\dataDim$-dimensional space.
+
+One  approach to  modeling  a form  such as  a  sheet of  paper is  to
+consider a  finite element model (effectively a  discretization of the
+continuous surface). A finite element  model of a piece of paper could
+consist of  a grid of  points, each point  connected to its  nearest 4
+neighbors  through a  spring,\footnote{For  higher dimensional  paper,
+  more neighbors  would be considered, for lower  dimensional paper (a
+  piece of  string) two  neighbors would be  considered.} like  an old
+fashioned   mattress.  We  denote   the  spring   constant  connecting
+point\footnote{The  spring constant  could be  negative  (indicating a
+  repulsive spring).}   $i$ to point $j$  by $\springScalar_{i,j}$. If
+two  points are  unconnected we  can take  $\springScalar_{i,j}=0$. We
+represent  all  springs in  a  matrix,  $\springMatrix$.  Such a  grid
+representing   paper  folded   in   three  dimensions   is  shown   in
+Figure~\ref{fig:neighboursGridData}.
+\begin{figure}
+  \begin{center}
+  \includegraphics[width=0.4\textwidth]{../diagrams/neighboursGridLatentInterspeech.pdf}
+  \end{center}
+  \caption{Finite element model of a piece of paper. The paper is
+    divided into a grid of points. Each point is connected to its
+    neighbors through springs.}\label{fig:neighboursGridData}
+\end{figure}
+
+When the paper is deformed  in high dimensions, we denote the location
+of the $i$th point from the grid by $\dataVector_{i, :}$. We represent
+all   points    from   the    grid   in   a    \emph{design   matrix},
+$\dataMatrix\in^{\numData\times\dataDim}$.  Using Hooke's law,  we can
+compute the potential  energy of the system for  a particular deformed
+configuration of the points, $\dataMatrix$,
+\[
+E(\dataMatrix, \springMatrix) = \frac{1}{2}\sum_{i,j}
+\springScalar_{i,j}(\dataVector_{i,:} -
+\dataVector_{j,;})^\top(\dataVector_{i,:} - \dataVector_{j,:})
+\]
+To model paper  of uniform density the nonzero  spring constants would
+all be  fixed to the same  value. However, in our  derivations we will
+consider the  general case  where they  can vary in  value as  it will
+prove useful when we extend our analogy.
+
+The potential energy of this spring network is given by the sum of the
+squared  displacement  of  the   springs,  multiplied  by  the  spring
+constants. We can rewrite this energy in matrix form as
+\[
+E(\dataMatrix, \springMatrix) = \frac{1}{2}\tr{\springMatrix \distanceMatrix}.
+\]
+
+Such spring systems are commonly represented in the form of a
+\emph{stiffness matrix}, which has the same form as our Laplacian, $\laplacianMatrix$. The elements of this
+matrix are given by
+\begin{align}
+  \laplacianScalar_{i,j}=-\frac{1}{2}(\springScalar_{i,j}+\springScalar_{j,
+  i}) \,\,\mathrm{if}\,\,i\neq j \label{eqn:diagonalLaplacian}\\
+\laplacianScalar_{i,i}=\frac{1}{2}\sum_{j\neq
+  i} (\springScalar_{i,j} + \springScalar_{j,i}). \label{eqn:offdiagonalLaplacian}
+\end{align}
+Since the squared  distance matrix is  symmetric with  diagonal elements  set to
+zero we can substitute  the $\springMatrix$ directly with the negative
+Laplacian form in our expression of the potential energy,
+\[
+  E(\dataMatrix, \springMatrix) =\tr{\dataMatrix\dataMatrix^\top\laplacianMatrix},
+\]
+As for the maximum entropy formulation, this effect is achieved by
+construction---each diagonal element in the stiffness matrix is set to
+be the negative sum of the corresponding row/column.  Recall that the
+reason that we can set these diagonal elements arbritarily is that
+their contribution to the trace comes through multiplication by the
+diagonal elements of $\distanceMatrix$. Since these elements are all
+zero, the diagonal can be set arbitrarily.  The Laplacian form is
+convenient as it allows us to switch between expressing the energy in
+terms of the data point positions and the interpoint squared
+distances.
+
+A probability
+density can be  formed from the energy by  exponentiating the negative
+energy and  normalizing\footnote{Where we have multiplied  by a factor
+  of half to match the standard Gaussian form.},
+\[
+p(\dataMatrix) \propto \exp\left(-\frac{1}{2}\tr{\laplacianMatrix
+    \dataMatrix\dataMatrix^\top}\right).
+\]
+The result matches our maximum entropy formulation in the limit as
+$\gamma\rightarrow 0$. Expressing the spring energy in the form of a
+Gaussian random field is equivalent to assuming that the lattice of
+springs has been submerged in a heat bath and points in the lattice
+are being randomly disturbed by collisions with thermally excited
+particles. A sample from the distribution is equivalent to a sample
+from the stationary distribution of this system. Note also the
+relationship with the Gaussian process latent variable model
+\citep{Lawrence:pnpca05}. That model also specifies a Gaussian random
+field across the data points, but one that is derived by considering
+Gaussian process mappings from a set of latent variables to the
+data. This contrasts with our random field which was derived by
+assuming the latent points live on a lattice connected by springs.
+%}
+
+%%% Local Variables:
+%%% TeX-master: "book"
+%%% End:

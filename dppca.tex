@@ -1,0 +1,527 @@
+\chapter{Nonlinear Probabilistic Principal Coordinate Analysis}
+
+\section{Dual Probabilistic PCA}
+
+
+\textbf{Probabilistic PCA}
+\begin{itemize}
+\item We have seen that PCA has a probabilistic interpretation \cite{Tipping:probpca99}.
+\item It is difficult to `non-linearise' directly.
+\item GTM and Density Networks are an attempt to do so.
+\end{itemize}
+~
+
+\textbf{Dual Probabilistic PCA}
+\begin{itemize}
+\item There is an alternative probabilistic interpretation of PCA \cite{Lawrence:pnpca05}.
+\item This interpretation can be made non-linear.
+\item The result is non-linear probabilistic PCA.
+\end{itemize}
+
+\section{Linear Latent Variable Model III}
+
+
+
+\begin{itemize}
+\item Define \emph{linear-Gaussian relationship} between latent variables
+and data.
+
+\begin{itemize}
+\item \textbf{Novel} Latent variable approach:
+
+\begin{itemize}
+\item Define Gaussian prior over \emph{parameters}, $\mappingMatrix$.
+\item Integrate out \emph{parameters}.
+\end{itemize}
+\end{itemize}
+
+\begin{center}
+\includegraphics[width=0.5\textwidth]{../../../gplvm/tex/diagrams/gplvmGraph}
+\par\end{center}
+
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix,\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\mappingMatrix\latentVector_{i,:}}{\dataStd^{2}\eye}\]
+\[
+p\left(\mappingMatrix\right)=\prod_{i=1}^{\dataDim}\gaussianDist{\mappingVector_{i,:}}{\zerosVector}{\eye}\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\latentMatrix\latentMatrix^{\top}+\dataStd^{2}\eye}\]
+
+\par\end{center}
+
+\end{itemize}
+
+\subsection{Linear Latent Variable Model IV}
+
+\textbf{\emph{Dual}} \textbf{Probabilistic PCA Max. Likelihood Soln}
+\cite{Lawrence:gplvm03}
+
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\latentMatrix\latentMatrix^{\top}+\dataStd^{2}\eye}\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{\dataDim}\gaussianDist{\dataVector_{:,j}}{\zerosVector}{\kernelMatrix},\,\,\,\,\,\,\,\kernelMatrix=\latentMatrix\mathbf{\latentMatrix}^{\top}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\latentMatrix\right)=-\frac{\dataDim}{2}\log\left|\kernelMatrix\right|-\frac{1}{2}\mbox{tr}\left(\kernelMatrix^{-1}\dataMatrix\dataMatrix^{\top}\right)+\mbox{const.}\]
+If $\eigenvectorMatrix_{\latentDim}^{\prime}$ are first $\latentDim$
+principal eigenvectors of $\dataDim^{-1}\dataMatrix\dataMatrix^{\top}$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\latentMatrix=\mathbf{U^{\prime}}_{\latentDim}\mathbf{L}\rotationMatrix^{\top},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.\[
+p\left(\dataMatrix|\mappingMatrix\right)=\prod_{i=1}^{\numData}\gaussianDist{\dataVector_{i,:}}{\zerosVector}{\covarianceMatrix},\,\,\,\,\,\,\,\covarianceMatrix=\mappingMatrix\mappingMatrix^{\top}+\dataStd^{2}\eye\]
+\[
+\log p\left(\dataMatrix|\mappingMatrix\right)=-\frac{\numData}{2}\log\left|\covarianceMatrix\right|-\frac{1}{2}\mbox{tr}\left(\covarianceMatrix^{-1}\dataMatrix^{\top}\dataMatrix\right)+\mbox{const.}\]
+If $\eigenvectorMatrix_{\latentDim}$ are first $\latentDim$ principal
+eigenvectors of $\numData^{-1}\dataMatrix^{\top}\dataMatrix$
+and the corresponding eigenvalues are $\Lambda_{\latentDim}$,\[
+\mappingMatrix=\eigenvectorMatrix_{\latentDim}\mathbf{L}\rotationMatrix^{\top},\,\,\,\,\,\,\,\mathbf{L}=\left(\Lambda_{\latentDim}-\dataStd^{2}\eye\right)^{\frac{1}{2}}\]
+where $\rotationMatrix$ is an arbitrary rotation matrix.
+\par\end{center}
+
+Equivalence of Formulations
+
+\textbf{The Eigenvalue Problems are equivalent}
+\begin{itemize}
+\item Solution for Probabilistic PCA (solves for the mapping)
+
+
+\[
+\dataMatrix^{\top}\dataMatrix\eigenvectorMatrix_{\latentDim}=\eigenvectorMatrix_{\latentDim}\Lambda_{\latentDim}\,\,\,\,\,\,\,\,\,\,\mappingMatrix=\eigenvectorMatrix_{\latentDim}\mathbf{L}\mathbf{V}^{\top}\]
+
+
+\item Solution for Dual Probabilistic PCA (solves for the latent positions)
+
+
+\[
+\dataMatrix\dataMatrix^{\top}\eigenvectorMatrix_{\latentDim}^{\prime}=\eigenvectorMatrix_{\latentDim}^{\prime}\Lambda_{\latentDim}\,\,\,\,\,\,\,\,\,\,\latentMatrix=\eigenvectorMatrix_{\latentDim}^{\prime}\mathbf{L}\mathbf{V}^{\top}\]
+
+
+\item Equivalence is from\[
+\eigenvectorMatrix_{\latentDim}=\dataMatrix^{\top}\eigenvectorMatrix_{\latentDim}^{\prime}\Lambda_{\latentDim}^{-\frac{1}{2}}\]
+
+\end{itemize}
+
+% \section{Gaussian Processes}
+
+% \subsection{Gaussian Process (GP)}
+
+% \textbf{Prior for Functions}
+% \begin{itemize}
+% \item Probability Distribution over Functions
+% \item Functions are infinite dimensional.
+
+% \begin{itemize}
+% \item Prior distribution over \emph{instantiations} of the function: finite
+% dimensional objects.
+% \item Can prove by induction that GP is `consistent'.
+% \end{itemize}
+% \item Mean and Covariance Functions
+% \item Instead of mean and covariance matrix, GP is defined by mean function
+% and covariance function.
+
+% \begin{itemize}
+% \item Mean function often taken to be zero or constant.
+% \item Covariance function must be \emph{positive definite}.
+% \item Class of valid covariance functions is the same as the class of \emph{Mercer
+% kernels}. 
+% \end{itemize}
+% \end{itemize}
+% \subsection{Gaussian Processes II}
+
+% \textbf{Zero mean Gaussian Process}
+% \begin{itemize}
+% \item A (zero mean) Gaussian process likelihood is of the form\[
+% p\left(\dataVector|\latentMatrix\right)=N\left(\dataVector|\zerosVector,\kernelMatrix\right),\]
+% where $\kernelMatrix$ is the covariance function or \emph{kernel}.
+% \item The \emph{linear kernel} with noise has the form\[
+% \kernelMatrix=\latentMatrix\latentMatrix^{\top}+\dataStd^{2}\eye\]
+
+% \item Priors over non-linear functions are also possible.
+
+% \begin{itemize}
+% \item To see what functions look like, we can sample from the prior process.
+% \end{itemize}
+% \end{itemize}
+
+% \subsection{Covariance Samples}
+
+% \textbf{Mention issue of correlation and regression to the mean ---
+% \cite{Stigler:table99}}
+
+% \texttt{demCovFuncSample}%
+% \begin{figure}
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample4}}\hfill{}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample1}}
+
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample2}}\hfill{}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample3}}
+
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample5}}\hfill{}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample6}}
+
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample7}}\hfill{}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demCovFuncSample8}}
+
+% \caption{(a) linear kernel, $\kernelMatrix=\latentMatrix\latentMatrix^{\top}$
+% (b) RBF kernel with $\gamma=10$, $\alpha=1$ (c) RBF kernel with
+% $l=1$, $\alpha=1$ (d) RBF kernel with $l=0.3$, $\alpha=4$ (e)
+% MLP kernel with $\alpha=8$, $w=100$ and $b=100$ (f) MLP kernel
+% with $\alpha=8$, $b=0$ and $w=100$ (g) bias kernel with $\alpha=1$
+% and (h) summed combination of: RBF kernel, $\alpha=1$, $l=0.3$;
+% bias kernel, $\alpha=$1; and white noise kernel, $\beta=100$\label{cap:kernelSamples}}
+
+% \end{figure}
+
+
+% \subsection{Gaussian Process Regression}
+
+% \textbf{Posterior Distribution over Functions}
+% \begin{itemize}
+% \item Gaussian processes are often used for regression.
+% \item We are given a known inputs $\latentMatrix$ and targets $\dataMatrix$.
+% \item We assume a prior distribution over functions by selecting a kernel.
+% \item Combine the prior with data to get a \emph{posterior} distribution
+% over functions.
+% \end{itemize}
+% Gaussian Process Regression
+
+% \texttt{demRegression}%
+% \begin{figure}
+% \begin{centering}
+% \subfigure[]{
+
+% \includegraphics[width=0.7\textwidth]{../../../gp/tex/diagrams/demRegression8}}
+% \par\end{centering}
+
+% \caption{Examples include WiFi localization, C14 callibration curve.}
+
+% \end{figure}
+
+
+% \subsection{Learning Kernel Parameters}
+
+% Can we determine length scales and noise levels from the data?
+
+% \texttt{demOptimiseKern}
+
+% %
+% \begin{figure}
+
+
+% %
+% \begin{minipage}[t]{1\columnwidth}%
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp1}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp3}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp5}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp7}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp9}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp11}}
+
+% \subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp13}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp15}}\subfigure[]{
+
+% \includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp17}}%
+% \end{minipage}\includegraphics[width=0.45\textwidth]{../../../gp/tex/diagrams/demOptimiseGp18}\caption{Optimize kernel}
+
+
+
+% \end{figure}
+
+
+\subsection{Non-Linear Latent Variable Model}
+
+\textbf{Dual Probabilistic PCA}
+\begin{itemize}
+\item Define \emph{linear-Gaussian relationship} between latent variables
+and data.
+
+\begin{itemize}
+\item \textbf{Novel} Latent variable approach:
+
+\begin{itemize}
+\item Define Gaussian prior over \emph{parameteters}, $\mappingMatrix$.
+\item Integrate out \emph{parameters}.
+\end{itemize}
+\item Inspection of the marginal likelihood shows ...
+
+\begin{itemize}
+\item The covariance matrix is a covariance function.
+\item We recognise it as the `linear kernel'.
+\end{itemize}
+\end{itemize}
+\begin{center}
+\[
+p\left(\dataMatrix|\latentMatrix,\mappingMatrix\right)=\prod_{i=1}^{n}N\left(\dataVector_{i,:}|\mappingMatrix\latentVector_{i,:},\dataStd^{2}\eye\right)\]
+\[
+p\left(\mappingMatrix\right)=\prod_{i=1}^{d}N\left(\mappingVector_{i,:}|\zerosVector,\eye\right)\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{d}N\left(\dataVector_{:,j}|\zerosVector,\latentMatrix\latentMatrix^{\top}+\dataStd^{2}\eye\right)\]
+\[
+p\left(\dataMatrix|\latentMatrix\right)=\prod_{j=1}^{d}N\left(\dataVector_{:,j}|\zerosVector,\kernelMatrix\right)\]
+\[
+\kernelMatrix=\latentMatrix\latentMatrix^{\top}+\dataStd^{2}\eye\]
+This is a product of Gaussian processes with linear kernels.\[
+\kernelMatrix=?\]
+Replace linear kernel with non-linear kernel for non-linear model.
+\par\end{center}
+
+\end{itemize}
+\subsection{Non-Linear Latent Variable Model}
+
+\textbf{RBF Kernel}
+\begin{itemize}
+\item The RBF kernel has the form $\kernelScalar_{i,j}=\kernelScalar\left(\latentVector_{i,:},\latentVector_{j,:}\right),$
+where
+
+
+\[
+\kernelScalar\left(\latentVector_{i,:},\latentVector_{j,:}\right)=\alpha\exp\left(-\frac{\left(\latentVector_{i,:}-\latentVector_{j,:}\right)^{\top}\left(\latentVector_{i,:}-\latentVector_{j,:}\right)}{2\rbfWidth^{2}}\right).\]
+
+
+\item No longer possible to optimise wrt $\latentMatrix$ via an eigenvalue
+problem.
+\item Instead find gradients with respect to $\latentMatrix,\alpha,\rbfWidth$
+and $\dataStd^{2}$ and optimise using gradient methods.
+\end{itemize}
+
+\subsection{Oil Data}
+
+
+%
+\begin{figure}
+\centering{}\includegraphics[width=0.8\textwidth]{../../../fgplvm/tex/diagrams/demOilFull}
+\end{figure}
+
+
+
+\textbf{Nearest Neighbour error in }$\latentMatrix$
+\begin{itemize}
+\item Nearest neighbour classification in latent space.
+
+
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline 
+Method & PCA & GTM & GP-LVM\tabularnewline
+\hline
+Errors & 162 & 11 & 1 \tabularnewline
+\hline
+\end{tabular}
+\par\end{center}
+
+\begin{center}
+\emph{cf} 2 errors in data space.
+\par\end{center}
+
+\end{itemize}
+
+\subsection{Stick Man Data}
+
+\texttt{demStick1}
+
+%
+\begin{figure}
+\centering{}\includegraphics[width=0.5\textwidth]{../../../fgplvm/tex/diagrams/demStick1Connected}\caption{The latent space for the stick man motion capture data. }
+
+\end{figure}
+
+
+
+\section{Model Selection with the GP-LVM}
+\begin{itemize}
+\item Observed data have been sampled from low dimensional manifold 
+\item $\dataVector=f(\latentVector)$ 
+\item Idea: Model $f$ rank embedding according to 
+
+\begin{enumerate}
+\item Data fit of $f$ 
+\item Complexity of $f$ 
+\end{enumerate}
+\item How to model $f$? 
+
+\begin{enumerate}
+\item Making as few assumtpions about $f$ as possible? 
+\item Allowing $f$ from as {}``rich'' class as possible? 
+\end{enumerate}
+\end{itemize}
+Gaussian Processes
+\begin{itemize}
+\item Generalisation of Gaussian Distribution over \textbf{infinite} index
+sets 
+\item Can be used specify distributions over functions 
+\item Regression \begin{eqnarray*}
+\dataVector & = & f(\latentVector)+\boldsymbol{\epsilon}\\
+p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi}) & = & \int p(\dataMatrix|f,\latentMatrix,\boldsymbol{\Phi})p(f|\latentMatrix,\boldsymbol{\Phi})df\\
+p(f|\latentMatrix,\boldsymbol{\Phi}) & = & \mathcal{\numData}(\zerosVector,\kernelMatrix)\\
+\hat{\boldsymbol{\Phi}} & = & \text{argmax}{}_{\boldsymbol{\Phi}}p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi})\end{eqnarray*}
+ 
+\end{itemize}
+Gaussian Processes%
+\footnote{Images: N.D. Lawrence%
+}
+
+\begin{eqnarray*}
+\log~p(\dataMatrix|\latentMatrix) & = & \underbrace{-\frac{1}{2}\tr{\dataMatrix^{\top}(\kernelMatrix+\beta^{-1}\eye)^{-1}\dataMatrix}}_{\text{data-fit}}-\\
+ &  & \underbrace{\frac{1}{2}\log~\det{\kernelMatrix+\beta^{-1}\eye}}_{\text{complexity}}-\frac{\numData}{2}\log~2\pi
+\end{eqnarray*}
+
+
+Gaussian Process Latent Variable Models
+\begin{itemize}
+\item GP-LVM models sampling process \begin{eqnarray*}
+\dataVector & = & \mappingFunction(\latentVector)+\boldsymbol{\epsilon}\\
+p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi}) & = & \int p(\dataMatrix|\mappingFunction,\latentMatrix,\boldsymbol{\Phi})p(\mappingFunction|\latentMatrix,\boldsymbol{\Phi})\text{d}\mappingFunction\\
+p(\mappingFunction|\latentMatrix,\boldsymbol{\Phi}) & = & \mathcal{\numData}(\zerosVector,\kernelMatrix)\\
+\left\{ \hat{\latentMatrix},\hat{\boldsymbol{\Phi}}\right\}  & = & \text{argmax}_{\latentMatrix,\boldsymbol{\Phi}}p(\dataMatrix|\latentMatrix,\boldsymbol{\Phi})\end{eqnarray*}
+ 
+\item Linear: Closed form solution 
+\item Non-Linear: Gradient based solution 
+\end{itemize}
+
+\section{Model Selection}
+\begin{itemize}
+\item \emph{Lawrence} - 2003 suggested the use of Spectral algorithms to
+initialise the latent space \textbf{Y} 
+\item \emph{Harmeling} - 2007 evaluated the use of GP-LVM objective for
+model selection 
+
+\begin{itemize}
+\item Comparisons between \textbf{Procrustes} score to ground truth and
+GP-LVM objective 
+\end{itemize}
+\end{itemize}
+Model Selection: Results%
+\footnote{Model selection results kindly provided by Carl Henrik Ek.%
+}
+
+%
+\begin{figure}
+
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_rank}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_rank_bar}}
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_rank_emb}}
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_hole}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_hole_rank}}
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/plane_hole_rank_emb}}
+
+\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/swissroll5_rank}}\hfill{}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/swissroll5_rank_bar}}\subfigure[]{
+
+\includegraphics[width=0.45\textwidth]{../diagrams/carl/rank/swissroll5_rank_emb}}\caption{Use of GP-LVM likelihood to select different models.}
+
+\end{figure}
+
+
+
+\section{Summary}
+\begin{itemize}
+\item We introduced a dual probabilistic interpretation of PCA.
+\item It was straightforward to non-linearise it using Gaussian processes.
+\item Result is a non-linear probabilistic PCA.
+\item Optimise latent variables rather than integrate them out.
+\item Next: some examples of the model used in applications.
+\end{itemize}
+
+\section{Matrix PCA}
+
+The dual approach to PCA leads us to consider a natural extension to PCA that relies on the matrix Gaussian density\index{matrix Gaussian density}. The matrix Gaussian is defined as
+\[
+\frac{1}{(2\pi)^{\frac{M\numData}{2}} \det{\covarianceMatrix}^{\frac{\numData}{2}} \det{\kernelMatrix}^{\frac{M}{2}}} \exp\left( -\frac{1}{2}\tr{\kernelMatrix^{-1} \left(\dataMatrix -\meanMatrix\right)\covarianceMatrix^{-1} \left(\dataMatrix - \meanMatrix\right)^\top}\right)
+\]
+Note that the trace term in the exponential can be rewritten,
+\[
+-\frac{1}{2}\tr{\kernelMatrix^{-1} \left(\dataMatrix -\meanMatrix\right)\covarianceMatrix^{-1} \left(\dataMatrix - \meanMatrix\right)^\top} =  -\frac{1}{2}\tr{\covarianceMatrix^{-1} \left(\dataMatrix -\meanMatrix\right)^\top\kernelMatrix^{-1} \left(\dataMatrix - \meanMatrix\right)}
+\] 
+so the distribution is insensitive to swapping $\covarianceMatrix$ and $\kernelMatrix$ and transposing $\dataMatrix$ and $\meanMatrix$.
+
+Consideration of probabilistic PCO allows us to consider a dimensionality reduction version of this model. If we take $\covarianceMatrix = \fantasyMatrix\fantasyMatrix^\top + \dataStd_\fantasyScalar^2 \eye$ and  $\kernelMatrix = \latentMatrix\latentMatrix^\top + \dataStd_\latentScalar^2 \eye$ and have $\meanMatrix = \mu \onesVector$ we can produce a variant of PCO for probabilistic data. The situation is that each feature, $j$, of our data is associated with a $\numData\times M$ matrix, $\dataMatrix_j$. Following probabilistic PCO we treat each of these features independently given the latent variables and write down a likelihood as
+\[
+p\left(\left\{\dataMatrix_j\right\}_{j=1}^\dataDim | \latentMatrix,
+  \fantasyMatrix, \dataStd^2_\latentScalar,
+  \dataStd^2_\fantasyScalar\right) =
+\prod_{j=1}^\dataDim\frac{1}{(2\pi)^\frac{M \numData}{2}
+  \det{\covarianceMatrix}^\frac{\numData}{2}
+  \det{\kernelMatrix}^\frac{M}{2}} \exp\left(
+  -\frac{1}{2}\tr{\kernelMatrix^{-1} \left(\dataMatrix_j
+      -\meanScalar_j \onesVector\right)\covarianceMatrix^{-1}
+    \left(\dataMatrix - \meanScalar_j\onesVector\right)^\top}\right)
+\]
+We can compute the gradient of the log likelihood with respect to
+$\latentMatrix$,
+\[
+\frac{\mathrm{d}\log
+  p\left(\left\{\dataMatrix_j\right\}_{j=1}^\dataDim | \latentMatrix,
+    \fantasyMatrix, \dataStd^2_\latentScalar,
+    \dataStd^2_\fantasyScalar\right)}{\mathrm{d}\latentMatrix} =
+-\left(\frac{M}{2}\kernelMatrix^{-1} +
+  \frac{1}{2}\kernelMatrix^{-1}\cdataMatrix_j\covarianceMatrix^{-1}\cdataMatrix_j^\top\kernelMatrix^{-1}\right)\latentMatrix
+\]
+we have seen how we can solve for a fixed point in this equation by setting
+\[
+\latentMatrix = \eigenvectorMatrix_\latentScalar
+\eigenvalueMatrix_\latentScalar\rotationMatrix_\latentScalar^\top
+\]
+where $\eigenvectorMatrix_\latentScalar$ are the eigenvectors of
+$\cdataMatrix_j\covarianceMatrix^{-1}\cdataMatrix_j^\top$ associated
+with the largest $\latentDim_\latentScalar$ eigenvalues,
+$\left\{\ell_i\right\}_{i=1}^{\latentDim_\latentScalar}$. The matrix
+$\eigenvectorMatrix_\latentScalar$ is diagonal with elements given by
+$\eigenvalue_i=\sqrt{\ell_i-\dataStd^2_\latentScalar}$ and
+$\rotationMatrix_\latentScalar$ is an arbitrary rotation matrix.
+
+We can solve a similar fixed point equation for $\fantasyMatrix$ giving
+\[
+\fantasyMatrix = \eigenvectorMatrix_\fantasyScalar
+\eigenvalueMatrix_\fantasyScalar\rotationMatrix_\fantasyScalar^\top
+\]
+where $\eigenvectorMatrix_\fantasyScalar$ are the eigenvectors of
+$\cdataMatrix_j^\top\kernelMatrix^{-1}\cdataMatrix_j$ associated
+with the largest $\fantasyDim_\fantasyScalar$ eigenvalues,
+$\left\{\ell_i\right\}_{i=1}^{\latentDim_\fantasyScalar}$. The matrix
+$\eigenvectorMatrix_\fantasyScalar$ is diagonal with elements given by
+$\eigenvalue_i=\sqrt{\ell_i-\dataStd^2_\fantasyScalar}$ and
+$\rotationMatrix_\fantasyScalar$ is an arbitrary rotation matrix.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "book"
+%%% End: 

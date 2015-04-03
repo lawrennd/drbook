@@ -1,0 +1,21 @@
+pg.5 - You seem to be using y. Should it be Y?
+pg.6 - \mathbb{R} instead of \mathfrak{R} for the set of real numbers? (\mathbb{R} is very common in the literature)
+pg.21 - Additional (buy maybe less intuitive) argument:
+ For an n-sphere, the ratio
+ (n-sphere surface measure)x(small thickness constant d) / (n-sphere volume measure), turns out to be equal to (n * d / radius) (see also http://en.wikipedia.org/wiki/N-sphere#Volume_and_surface_area).
+ The thickness constant gives an n-dimensional measure, so the numerator amounts to the shell volume. For constant radius and thickness, this diverges with n.
+pg.26 - In Fig1.8 the black theoretical curve is not immediately visible; a bright colour would help.
+pg.65 - First equation might have an excessive minus sign.
+pg.66 - In the last equation of boxfloat 2.12 you can recover the rotation R. Maybe worth commenting on that.
+pg.67 - Other properties: x = (A^+)b is the least-squares solution to the overdetermined system Ax=b. And A^+ is the projection matrix onto the column-space of Α and it is also idempotent.
+pg.67 - Last equation needs an inverse.
+pg.80 - First float equation (error function): The L1 norm would be more helpful in the matrix form of the equation, ||D/p - Δ/q||₁ / (n(n-1)).
+pg.82 - The reasoning that retaining the largest variances minimises the error is convincing and the error function E looks legit.
+ Though, I almost misinterpreted E as I didn't notice the "discarded" in "re-express the error as a function of the sum of the sample variance for each discarded column of y".
+pg.93 - In Figure 4.7 it looks like you are getting more non-zero error areas as move from (a) to (d), yet the MAE tends to zero. Mismatched captions?
+pg.94 - In the paragraph starting with "Because the full eigendecomposition is ...", the last inline equation in the paragraph should have Λ instead of U.
+pg.94 - In the equation immediately after "which can be re-expressed as...", I think the Λ² on the RHS should be Λ, as the negative square-roots left and right reduce it by power one.
+pg.95 - Similarly at the inline equations of lines 1 and 2.
+pg.96 - In the equation immediately after "and center it giving...", a transpose is missing on Y.
+pg.96 - "Multiplying by 1/2 then gives" -> "Multiplying by  1/2 then gives [the similarity matrix B]".
+pg.98 - In Figure 4.9, there seems to be a scaling issue with the extracted latent positions. Maybe related to my note for page 94 on Λ?

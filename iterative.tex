@@ -1,0 +1,132 @@
+%{
+\begin{matlab}
+  %}
+  % Comment/MATLAB set up code
+  importTool('dimred')
+  dimredToolboxes
+  randn('seed', 1e6)
+  rand('seed', 1e6)
+  if ~isoctave
+    colordef white
+  end
+  % Text width in cm.
+  textWidth = 10
+  %{
+  %   Start of Comment/MATLAB brackets
+\end{matlab}
+
+\chapter{Non-Spectral Approaches}
+\label{chap:iterative}
+
+\fixme{Emphasize the fact that Classical MDS and spectral methods are two stage processes: one is the choice of distance measure and one is the choice of visualization of the distances. These iterative methods are alternatives for visualization of the distances. Also include t-SNE here.}
+
+\section{Iterative Methods}
+\begin{itemize}
+\item Multidimensional Scaling (MDS) 
+
+  \begin{itemize}
+  \item Iterative optimisation of a stress function \cite{Kruskal:mds64}.
+  \end{itemize}
+\item Sammon Mappings \cite{Sammon:nonlinear69}.
+
+  \begin{itemize}
+  \item Strictly speaking not a mapping --- similar to iterative MDS.
+  \end{itemize}
+\item NeuroScale \cite{Lowe:neuroscale96}
+
+  \begin{itemize}
+  \item Augmentation of iterative MDS methods with a mapping.
+  \end{itemize}
+\end{itemize}
+
+\section{Distance Preservation}
+
+\textbf{Local Distance Preservation} 
+\begin{itemize}
+\item The dimensionality reduction techniques we have discussed so far preserve
+  local distances in data space.
+\item We'll think of that as a mapping
+\end{itemize}
+Distance Preservation
+
+\textbf{Forward Mapping}
+\begin{itemize}
+\item Mapping from 1-D latent space to 2-D data space.\[
+  \dataScalar{1}=\latentScalar^{2}-0.5,\,\,\,\,\dataScalar{2}=-\latentScalar^{2}+0.5\]
+
+\end{itemize}
+\textbf{Backward Mapping}
+\begin{itemize}
+\item Mapping from 2-D data space to 1-D latent.\[
+  x=0.5\left(\dataScalar{1}^{2}+\dataScalar{2}^{2}+1\right)\]
+
+\end{itemize}
+% 
+\begin{figure}
+  \subfigure[]{
+
+    \includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/demBackMapping3}}\hfill{}\subfigure[]{
+
+    \includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/demBackMapping6}}
+
+  \subfigure[]{
+
+    \includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/demBackMapping9}}\hfill{}\subfigure[]{
+
+    \includegraphics[width=0.45\textwidth]{../../../fgplvm/tex/diagrams/demBackMapping12}}
+
+  \caption{(a) and (b) show the case where the mapping is from the latent space
+    to the data space. Here two points close in data space can be far
+    in latent space. In (c) and (d) the mapping is from the data space
+    to the latent space. Here two points far in data space can be close
+    in latent space. }
+
+\end{figure}
+
+
+\section{Tangled String}
+\begin{itemize}
+\item Sometimes local distance preservation in data space is wrong.
+
+  \begin{itemize}
+  \item The pink and blue ball should be separated.
+  \item But the assumption makes the problem simpler (for spectral methods
+    it is convex).
+  \end{itemize}
+
+\end{itemize}
+\begin{figure}
+  \includegraphics[width=0.3\textwidth]{../diagrams/stringInTwoD}\includegraphics[width=0.3\textwidth]{../diagrams/stringInTwoDwithBalls}\includegraphics[width=0.3\textwidth]{../diagrams/simpleStringInTwoDwithBalls}
+  \caption{Two points from a string entangled in two dimensions can be close together even if they are not close together in the underlying string.}
+\end{figure}
+Spectral Approaches
+
+\textbf{Good}
+\begin{itemize}
+\item Unique optimum.
+\end{itemize}
+\textbf{But}
+\begin{itemize}
+\item Non trivial for dealing with missing data.
+\item Difficult to extend (\emph{e.g.\ }temporal data) in a principled
+  way. 
+\end{itemize}
+Summary
+\begin{itemize}
+\item We have motivated the need for non-linear dimensionality reduction.
+\item Spectral approaches can achieve this, but they don't lead to probabilistic
+  models.
+\item We are looking for a probabilistic approach to encoding the mapping.
+\item Next we will se how point based representations of the latent space
+  can be used to achieve this.
+\end{itemize}
+
+
+\section{SNE, t-SNE}
+
+Can we relate to iterative mds and Sammon mappings.
+%}
+
+%%% Local Variables:
+%%% TeX-master: "book"
+%%% End:

@@ -1,0 +1,49 @@
+\chapter{The Gaussian Density}
+
+
+
+\section{Improper Prior on Mean}
+\label{sec:improperMean}
+
+An information matrix with a null space in the constant eigenvector
+can be arrived at through a Bayesian treatment of a mean vector. Here
+we consider Bayesian treatment of one column of $\dataMatrix$. Since
+our model is independent across columns (features) it is simple to
+extend it to the entire matrix.
+\begin{align*}
+  p(\dataVector|m) = & \frac{1}{(2\pi)^{\frac{\numData}{2}}\det{\Sigma}^{\frac{1}{2}}} \exp \left(-\frac{1}{2}(\dataVector - m\onesVector)^\top \Sigma^{-1} (\dataVector - m\onesVector)\right)\\
+  p(m) =& \frac{1}{(2\pi)^{1/2}\tau} \exp\left(-\frac{m^2}{2\tau}\right)\\
+  p(\dataVector) = &\frac{1}{(2\pi)^{\frac{\numData}{2}}\det{\Sigma +
+    \tau\onesVector\onesVector^\top}^{\frac{1}{2}}}\exp
+  \left(-\frac{1}{2}\dataVector\left(\Sigma +
+      \tau\onesVector\onesVector^\top\right)^{-1}\dataVector\right)
+\end{align*}
+The information matrix for this marginal distribution is found through
+the matrix inversion lemma,
+\begin{align*}
+  \left(\Sigma + \tau\onesVector\onesVector^\top\right)^{-1} =
+  \Sigma^{-1} -
+  \frac{1}{\tau^{-2}+\onesVector\Sigma^{-1}\onesVector}\Sigma^{-1}\onesVector\onesVector^\top\Sigma^{-1}
+\end{align*}
+which implies that for $\tau\rightarrow \infty$ the information matrix
+will have a null space in the constant vector (just as the stiffness
+matrix/Laplacian matrix has). Since once this operation is applied we
+cannot recover the component of $\Sigma$ that was in the null space,
+we correct for it by adding a constant vector component to
+$\laplacianMatrix$ with unknown variance: $\kernelMatrix^{-1}=
+\laplacianMatrix +
+\gamma\numData^{-1}\onesVector\onesVector^\top$ which implies
+that (since the eigenvectors of $\laplacianMatrix$ are all orthogonal
+to the constant vector) $\kernelMatrix$ will have an eigenvalue
+$\gamma$ associated with the eigenvector $\numData^{-1/2}\onesVector$.
+% \begin{align*}
+% \Sigma = \Sigma\laplacianMatrix\Sigma+\frac{1}{\gamma^{-1}+\onesVector\Sigma^{-1}\onesVector}\onesVector \onesVector^\top
+% \end{align*}
+% so we have 
+% \Sigma = \laplacianMatrix^{-1} - \gamma\onesVector\onesVector\top
+% If we have 
+
+
+%%% Local Variables:
+%%% TeX-master: "book"
+%%% End:
